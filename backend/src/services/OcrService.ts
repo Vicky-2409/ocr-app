@@ -99,7 +99,9 @@ export class OcrService {
   }
 
   async getUserResults(userId: string): Promise<IOcrResult[]> {
-    const results = await this.ocrResultRepository.findByUserId(userId);
+    const results = await this.ocrResultRepository.findByUserId(
+      new Types.ObjectId(userId)
+    );
 
     // Generate fresh signed URLs for each result
     const resultsWithFreshUrls = await Promise.all(
