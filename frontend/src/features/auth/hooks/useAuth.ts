@@ -91,7 +91,7 @@ export const useAuth = () => {
   const register = useCallback(
     async (name: string, email: string, password: string) => {
       try {
-        const response = await authService.register({ name, email, password });
+        const response = await authService.register(name, email, password);
         if (response.success) {
           return response;
         }
