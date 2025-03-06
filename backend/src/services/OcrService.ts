@@ -148,7 +148,7 @@ export class OcrService {
         status,
         error: error || undefined,
         processingTime,
-      });
+      } as IOcrResult);
       console.log("OCR result saved successfully");
       return result;
     } catch (err) {
