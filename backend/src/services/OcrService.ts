@@ -37,8 +37,19 @@ export class OcrService {
 
     try {
       console.log("Starting OCR processing for user:", userId);
+      console.log("Image file details:", {
+        originalname: imageFile.originalname,
+        mimetype: imageFile.mimetype,
+        size: imageFile.size,
+        key: imageFile.key,
+      });
+
+      if (!imageFile.key) {
+        throw new Error("No file key found in uploaded file");
+      }
 
       // Create worker with timeout
+      console.log("Creating OCR worker...");
       const workerPromise = createWorker();
       worker = await Promise.race([
         workerPromise,
@@ -50,6 +61,7 @@ export class OcrService {
       console.log("Worker created successfully");
 
       // Load language with timeout
+      console.log("Loading English language...");
       await Promise.race([
         worker.loadLanguage("eng"),
         new Promise((_, reject) =>
@@ -59,6 +71,7 @@ export class OcrService {
       console.log("Language loaded successfully");
 
       // Initialize with timeout
+      console.log("Initializing worker...");
       await Promise.race([
         worker.initialize("eng"),
         new Promise((_, reject) =>
@@ -71,6 +84,7 @@ export class OcrService {
       console.log("Worker initialized successfully");
 
       // Get the image from S3 with timeout
+      console.log("Generating S3 URL...");
       const command = new GetObjectCommand({
         Bucket: S3_BUCKET_NAME,
         Key: imageFile.key,
@@ -88,6 +102,7 @@ export class OcrService {
       console.log("S3 URL generated successfully");
 
       // Recognize text with progress tracking and timeout
+      console.log("Starting OCR processing...");
       const result = await Promise.race([
         worker.recognize(url, {
           logger: (m) => {
@@ -104,6 +119,7 @@ export class OcrService {
       console.log("OCR processing completed successfully");
 
       // Terminate worker
+      console.log("Terminating worker...");
       await worker.terminate();
       console.log("Worker terminated successfully");
     } catch (err: unknown) {
@@ -126,6 +142,7 @@ export class OcrService {
 
     // Get the S3 URL for the image with timeout
     try {
+      console.log("Generating final S3 URL...");
       const command = new GetObjectCommand({
         Bucket: S3_BUCKET_NAME,
         Key: imageFile.key || imageFile.originalname,
@@ -140,6 +157,7 @@ export class OcrService {
         ),
       ]);
 
+      console.log("Saving OCR result...");
       const result = await this.ocrResultRepository.create({
         userId: new Types.ObjectId(userId),
         originalImage: imageFile.key || imageFile.originalname,
