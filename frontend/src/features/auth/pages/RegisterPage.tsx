@@ -34,7 +34,11 @@ export const RegisterPage: React.FC = () => {
     }
 
     try {
-      await register(formData.name, formData.email, formData.password);
+      await register({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+      });
       toast.success("Registration successful! Please log in.");
       navigate("/login");
     } catch (error) {

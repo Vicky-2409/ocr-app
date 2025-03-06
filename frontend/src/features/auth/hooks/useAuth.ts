@@ -88,20 +88,17 @@ export const useAuth = () => {
     navigate("/login", { replace: true });
   }, [navigate]);
 
-  const register = useCallback(
-    async (name: string, email: string, password: string) => {
-      try {
-        const response = await authService.register(name, email, password);
-        if (response.success) {
-          return response;
-        }
-        throw new Error(response.message || "Registration failed");
-      } catch (error) {
-        throw error;
+  const register = useCallback(async (credentials: RegisterCredentials) => {
+    try {
+      const response = await authService.register(credentials);
+      if (response.success) {
+        return response;
       }
-    },
-    []
-  );
+      throw new Error(response.message || "Registration failed");
+    } catch (error) {
+      throw error;
+    }
+  }, []);
 
   return {
     isAuthenticated,

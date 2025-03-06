@@ -16,7 +16,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<any>;
   logout: () => void;
-  register: (name: string, email: string, password: string) => Promise<any>;
+  register: (credentials: RegisterCredentials) => Promise<any>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -99,20 +99,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     navigate("/login", { replace: true });
   }, [navigate]);
 
-  const register = useCallback(
-    async (name: string, email: string, password: string) => {
-      try {
-        const response = await authService.register(name, email, password);
-        if (response.success) {
-          return response;
-        }
-        throw new Error(response.message || "Registration failed");
-      } catch (error) {
-        throw error;
+  const register = useCallback(async (credentials: RegisterCredentials) => {
+    try {
+      const response = await authService.register(credentials);
+      if (response.success) {
+        return response;
       }
-    },
-    []
-  );
+      throw new Error(response.message || "Registration failed");
+    } catch (error) {
+      throw error;
+    }
+  }, []);
 
   return (
     <AuthContext.Provider
