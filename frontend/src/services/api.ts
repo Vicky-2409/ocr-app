@@ -16,6 +16,9 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  timeout: 300000, // 5 minutes default timeout
+  maxContentLength: Infinity,
+  maxBodyLength: Infinity,
 });
 
 // Add token to requests if it exists
@@ -24,8 +27,35 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // Remove Content-Type for multipart/form-data requests
+  if (config.headers["Content-Type"] === "multipart/form-data") {
+    delete config.headers["Content-Type"];
+  }
   return config;
 });
+
+// Add response interceptor for better error handling
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error("Response error:", {
+        status: error.response.status,
+        data: error.response.data,
+        headers: error.response.headers,
+      });
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error("Request error:", error.request);
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.error("Error:", error.message);
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const authService = {
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
@@ -60,20 +90,45 @@ export const ocrService = {
     const formData = new FormData();
     formData.append("image", file);
     const token = localStorage.getItem("token");
-    console.log("Token from localStorage:", token); // Debug log
+    console.log("Token from localStorage:", token);
 
     const headers = {
-      "Content-Type": "multipart/form-data",
       ...(token && { Authorization: `Bearer ${token}` }),
     };
-    console.log("Request headers:", headers); // Debug log
+    console.log("Request headers:", headers);
 
-    const response = await api.post<ApiResponse<OcrResult>>(
-      "/ocr/process",
-      formData,
-      { headers }
-    );
-    return response.data;
+    try {
+      const response = await api.post<ApiResponse<OcrResult>>(
+        "/ocr/process",
+        formData,
+        {
+          headers,
+          timeout: 300000, // 5 minutes timeout
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total!
+            );
+            console.log(`Upload progress: ${percentCompleted}%`);
+          },
+          maxContentLength: Infinity,
+          maxBodyLength: Infinity,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error processing image:", error);
+      if (error.code === "ECONNABORTED") {
+        throw new Error(
+          "Request timed out. Please try again with a smaller image."
+        );
+      }
+      if (error.response?.status === 502) {
+        throw new Error(
+          "Server is temporarily unavailable. Please try again in a few moments."
+        );
+      }
+      throw error;
+    }
   },
 
   async getUserResults(): Promise<ApiResponse<OcrResult[]>> {

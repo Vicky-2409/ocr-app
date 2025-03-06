@@ -48,63 +48,138 @@ export class OcrService {
         throw new Error("No file key found in uploaded file");
       }
 
-      // Create worker with timeout
+      // Create worker with timeout and retry
       console.log("Creating OCR worker...");
-      const workerPromise = createWorker();
-      worker = await Promise.race([
-        workerPromise,
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Worker creation timeout")), 30000)
-        ),
-      ]);
+      let retryCount = 0;
+      const maxRetries = 3;
 
-      console.log("Worker created successfully");
+      while (retryCount < maxRetries) {
+        try {
+          const workerPromise = createWorker({
+            logger: (m) => {
+              if (m.status === "creating worker") {
+                console.log("Creating worker...");
+              } else if (m.status === "loading language") {
+                console.log("Loading language...");
+              } else if (m.status === "initializing") {
+                console.log("Initializing worker...");
+              } else if (m.status === "recognizing text") {
+                console.log(`OCR Progress: ${m.progress * 100}%`);
+              }
+            },
+          });
 
-      // Load language with timeout
+          worker = await Promise.race([
+            workerPromise,
+            new Promise((_, reject) =>
+              setTimeout(
+                () => reject(new Error("Worker creation timeout")),
+                60000
+              )
+            ),
+          ]);
+          console.log("Worker created successfully");
+          break;
+        } catch (err) {
+          retryCount++;
+          console.error(`Worker creation attempt ${retryCount} failed:`, err);
+          if (retryCount === maxRetries) throw err;
+          await new Promise((resolve) =>
+            setTimeout(resolve, 1000 * retryCount)
+          );
+        }
+      }
+
+      // Load language with timeout and retry
       console.log("Loading English language...");
-      await Promise.race([
-        worker.loadLanguage("eng"),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Language loading timeout")), 30000)
-        ),
-      ]);
-      console.log("Language loaded successfully");
+      retryCount = 0;
+      while (retryCount < maxRetries) {
+        try {
+          await Promise.race([
+            worker.loadLanguage("eng"),
+            new Promise((_, reject) =>
+              setTimeout(
+                () => reject(new Error("Language loading timeout")),
+                60000
+              )
+            ),
+          ]);
+          console.log("Language loaded successfully");
+          break;
+        } catch (err) {
+          retryCount++;
+          console.error(`Language loading attempt ${retryCount} failed:`, err);
+          if (retryCount === maxRetries) throw err;
+          await new Promise((resolve) =>
+            setTimeout(resolve, 1000 * retryCount)
+          );
+        }
+      }
 
-      // Initialize with timeout
+      // Initialize with timeout and retry
       console.log("Initializing worker...");
-      await Promise.race([
-        worker.initialize("eng"),
-        new Promise((_, reject) =>
-          setTimeout(
-            () => reject(new Error("Worker initialization timeout")),
-            30000
-          )
-        ),
-      ]);
-      console.log("Worker initialized successfully");
+      retryCount = 0;
+      while (retryCount < maxRetries) {
+        try {
+          await Promise.race([
+            worker.initialize("eng"),
+            new Promise((_, reject) =>
+              setTimeout(
+                () => reject(new Error("Worker initialization timeout")),
+                60000
+              )
+            ),
+          ]);
+          console.log("Worker initialized successfully");
+          break;
+        } catch (err) {
+          retryCount++;
+          console.error(
+            `Worker initialization attempt ${retryCount} failed:`,
+            err
+          );
+          if (retryCount === maxRetries) throw err;
+          await new Promise((resolve) =>
+            setTimeout(resolve, 1000 * retryCount)
+          );
+        }
+      }
 
-      // Get the image from S3 with timeout
+      // Get the image from S3 with timeout and retry
       console.log("Generating S3 URL...");
-      const command = new GetObjectCommand({
-        Bucket: S3_BUCKET_NAME,
-        Key: imageFile.key,
-      });
-
-      const url = await Promise.race([
-        getSignedUrl(s3Client, command, { expiresIn: 3600 }),
-        new Promise((_, reject) =>
-          setTimeout(
-            () => reject(new Error("S3 URL generation timeout")),
-            30000
-          )
-        ),
-      ]);
-      console.log("S3 URL generated successfully");
+      retryCount = 0;
+      let url: string;
+      while (retryCount < maxRetries) {
+        try {
+          const command = new GetObjectCommand({
+            Bucket: S3_BUCKET_NAME,
+            Key: imageFile.key,
+          });
+          url = await Promise.race([
+            getSignedUrl(s3Client, command, { expiresIn: 3600 }),
+            new Promise((_, reject) =>
+              setTimeout(
+                () => reject(new Error("S3 URL generation timeout")),
+                60000
+              )
+            ),
+          ]);
+          console.log("S3 URL generated successfully");
+          break;
+        } catch (err) {
+          retryCount++;
+          console.error(`S3 URL generation attempt ${retryCount} failed:`, err);
+          if (retryCount === maxRetries) throw err;
+          await new Promise((resolve) =>
+            setTimeout(resolve, 1000 * retryCount)
+          );
+        }
+      }
 
       // Recognize text with progress tracking and timeout
       console.log("Starting OCR processing...");
       const result = await Promise.race([
-        worker.recognize(url, {
+        worker.recognize(url!, {
           logger: (m) => {
             if (m.status === "recognizing text") {
               console.log(`OCR Progress: ${m.progress * 100}%`);
@@ -112,7 +187,7 @@ export class OcrService {
           },
         }),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("OCR processing timeout")), 180000)
+          setTimeout(() => reject(new Error("OCR processing timeout")), 300000)
         ),
       ]);
       extractedText = result.data.text;
@@ -125,7 +200,12 @@ export class OcrService {
     } catch (err: unknown) {
       status = "failed";
       error = err instanceof Error ? err.message : String(err);
-      console.error("OCR processing error:", error);
+      console.error("OCR processing error:", {
+        error,
+        userId,
+        processingTime: Date.now() - startTime,
+        stack: err instanceof Error ? err.stack : undefined,
+      });
 
       // Ensure worker is terminated even if there's an error
       if (worker) {
@@ -140,28 +220,46 @@ export class OcrService {
     const processingTime = Date.now() - startTime;
     console.log(`Total processing time: ${processingTime}ms`);
 
-    // Get the S3 URL for the image with timeout
+    // Get the S3 URL for the image with timeout and retry
     try {
       console.log("Generating final S3 URL...");
-      const command = new GetObjectCommand({
-        Bucket: S3_BUCKET_NAME,
-        Key: imageFile.key || imageFile.originalname,
-      });
-      const imageUrl = await Promise.race([
-        getSignedUrl(s3Client, command, { expiresIn: 3600 }),
-        new Promise((_, reject) =>
-          setTimeout(
-            () => reject(new Error("Final S3 URL generation timeout")),
-            30000
-          )
-        ),
-      ]);
+      retryCount = 0;
+      let imageUrl: string;
+      while (retryCount < maxRetries) {
+        try {
+          const command = new GetObjectCommand({
+            Bucket: S3_BUCKET_NAME,
+            Key: imageFile.key || imageFile.originalname,
+          });
+          imageUrl = await Promise.race([
+            getSignedUrl(s3Client, command, { expiresIn: 3600 }),
+            new Promise((_, reject) =>
+              setTimeout(
+                () => reject(new Error("Final S3 URL generation timeout")),
+                60000
+              )
+            ),
+          ]);
+          console.log("Final S3 URL generated successfully");
+          break;
+        } catch (err) {
+          retryCount++;
+          console.error(
+            `Final S3 URL generation attempt ${retryCount} failed:`,
+            err
+          );
+          if (retryCount === maxRetries) throw err;
+          await new Promise((resolve) =>
+            setTimeout(resolve, 1000 * retryCount)
+          );
+        }
+      }
 
       console.log("Saving OCR result...");
       const result = await this.ocrResultRepository.create({
         userId: new Types.ObjectId(userId),
         originalImage: imageFile.key || imageFile.originalname,
-        imageUrl,
+        imageUrl: imageUrl!,
         extractedText,
         status,
         error: error || undefined,

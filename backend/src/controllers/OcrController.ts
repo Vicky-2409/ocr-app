@@ -45,6 +45,13 @@ export class OcrController {
       }
 
       console.log("Processing image for user:", req.user.id);
+      console.log("File details:", {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        key: (req.file as any).key,
+      });
+
       const result = await this.ocrService.processImage(req.user.id, req.file);
       console.log("Image processed successfully");
 
@@ -54,14 +61,27 @@ export class OcrController {
         data: transformOcrResult(result),
       });
     } catch (error) {
-      console.error("Error processing image:", error);
+      console.error("Error processing image:", {
+        error,
+        userId: req.user?.id,
+        fileDetails: req.file
+          ? {
+              originalname: req.file.originalname,
+              mimetype: req.file.mimetype,
+              size: req.file.size,
+              key: (req.file as any).key,
+            }
+          : null,
+        stack: error instanceof Error ? error.stack : undefined,
+      });
 
       // Handle specific error types
       if (error instanceof Error) {
         if (error.message.includes("timeout")) {
           res.status(HttpStatus.REQUEST_TIMEOUT).json({
             success: false,
-            message: "OCR processing timed out. Please try again.",
+            message:
+              "OCR processing timed out. Please try again with a smaller image.",
           });
           return;
         }
@@ -70,6 +90,14 @@ export class OcrController {
           res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
             success: false,
             message: "Error accessing image storage. Please try again.",
+          });
+          return;
+        }
+
+        if (error.message.includes("Worker")) {
+          res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: "Error initializing OCR worker. Please try again.",
           });
           return;
         }
