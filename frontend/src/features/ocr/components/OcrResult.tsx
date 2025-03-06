@@ -8,7 +8,16 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
-import { Trash2, Clock, Calendar, Copy, Check, Image as ImageIcon, FileText, AlertCircle } from "lucide-react";
+import {
+  Trash2,
+  Clock,
+  Calendar,
+  Copy,
+  Check,
+  Image as ImageIcon,
+  FileText,
+  AlertCircle,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface OcrResultProps {
@@ -16,11 +25,12 @@ interface OcrResultProps {
   onDelete?: (id: string) => void;
 }
 
+// Replace dynamic API URL with relative path
+const API_URL = "/api";
+
 export const OcrResult: React.FC<OcrResultProps> = ({ result, onDelete }) => {
   const [copied, setCopied] = useState(false);
-  const imageUrl = `https://${import.meta.env.VITE_S3_BUCKET_NAME}.s3.${
-    import.meta.env.VITE_AWS_REGION
-  }.amazonaws.com/${result.originalImage}`;
+  const imageUrl = `${API_URL}/images/${result.originalImage}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(result.extractedText || "");
@@ -42,7 +52,9 @@ export const OcrResult: React.FC<OcrResultProps> = ({ result, onDelete }) => {
               <FileText className="h-5 w-5 text-primary-600" />
             </div>
             <div>
-              <h3 className="text-xl font-semibold text-secondary-900">OCR Result</h3>
+              <h3 className="text-xl font-semibold text-secondary-900">
+                OCR Result
+              </h3>
               <motion.span
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -179,4 +191,4 @@ export const OcrResult: React.FC<OcrResultProps> = ({ result, onDelete }) => {
       </Card>
     </motion.div>
   );
-}
+};

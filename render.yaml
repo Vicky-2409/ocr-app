@@ -3,8 +3,9 @@ services:
     name: ocr-app
     env: node
     buildCommand: |
-      npm install
-      npm run build --workspaces
+      cd backend && npm install && npm install @types/express @types/cors @types/multer @types/bcryptjs @types/jsonwebtoken --save-dev && npm run build
+      cd ../frontend && npm install && npm run build
+      cd ..
     startCommand: cd backend && node dist/index.js
     envVars:
       - key: NODE_ENV
