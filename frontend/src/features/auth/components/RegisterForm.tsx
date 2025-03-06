@@ -81,7 +81,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="space-y-2">
         <label
           htmlFor="name"
@@ -98,6 +98,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
               touchedFields.name && errors.name ? "border-red-500" : ""
             }`}
             placeholder="Enter your name"
+            autoComplete="name"
           />
           {touchedFields.name && errors.name && (
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -122,13 +123,14 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
         </label>
         <div className="relative">
           <Input
-            type="email"
+            type="text"
             id="email"
             {...register("email")}
             className={`w-full ${
               touchedFields.email && errors.email ? "border-red-500" : ""
             }`}
             placeholder="Enter your email"
+            autoComplete="email"
           />
           {touchedFields.email && errors.email && (
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -160,6 +162,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
               touchedFields.password && errors.password ? "border-red-500" : ""
             }`}
             placeholder="Create a password"
+            autoComplete="new-password"
           />
           <button
             type="button"
@@ -204,6 +207,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
                 : ""
             }`}
             placeholder="Confirm your password"
+            autoComplete="new-password"
           />
           <button
             type="button"

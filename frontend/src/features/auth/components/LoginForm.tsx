@@ -57,7 +57,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="space-y-2">
         <label
           htmlFor="email"
@@ -67,13 +67,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         </label>
         <div className="relative">
           <Input
-            type="email"
+            type="text"
             id="email"
             {...register("email")}
             className={`w-full ${
               touchedFields.email && errors.email ? "border-red-500" : ""
             }`}
             placeholder="Enter your email"
+            autoComplete="email"
           />
           {touchedFields.email && errors.email && (
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -105,6 +106,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
               touchedFields.password && errors.password ? "border-red-500" : ""
             }`}
             placeholder="Enter your password"
+            autoComplete="current-password"
           />
           <button
             type="button"
