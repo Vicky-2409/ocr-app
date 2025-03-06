@@ -11,10 +11,12 @@ export interface User {
   name: string;
 }
 
-export interface AuthResponse {
+export interface AuthResponseData {
   token: string;
   user: User;
 }
+
+export interface AuthResponse extends ApiResponse<AuthResponseData> {}
 
 export interface OcrResult {
   id: string;
