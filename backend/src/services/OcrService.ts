@@ -36,66 +36,125 @@ export class OcrService {
     let worker;
 
     try {
-      // Create worker
-      worker = await createWorker();
-      await worker.loadLanguage("eng");
-      await worker.initialize("eng");
+      console.log("Starting OCR processing for user:", userId);
 
-      // Get the image from S3
+      // Create worker with timeout
+      const workerPromise = createWorker();
+      worker = await Promise.race([
+        workerPromise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Worker creation timeout")), 30000)
+        ),
+      ]);
+
+      console.log("Worker created successfully");
+
+      // Load language with timeout
+      await Promise.race([
+        worker.loadLanguage("eng"),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Language loading timeout")), 30000)
+        ),
+      ]);
+      console.log("Language loaded successfully");
+
+      // Initialize with timeout
+      await Promise.race([
+        worker.initialize("eng"),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Worker initialization timeout")),
+            30000
+          )
+        ),
+      ]);
+      console.log("Worker initialized successfully");
+
+      // Get the image from S3 with timeout
       const command = new GetObjectCommand({
         Bucket: S3_BUCKET_NAME,
         Key: imageFile.key,
       });
 
-      const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+      const url = await Promise.race([
+        getSignedUrl(s3Client, command, { expiresIn: 3600 }),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error("S3 URL generation timeout")),
+            30000
+          )
+        ),
+      ]);
+      console.log("S3 URL generated successfully");
 
-      // Recognize text with progress tracking
-      const result = await worker.recognize(url, {
-        logger: (m) => {
-          if (m.status === "recognizing text") {
-            // Log progress for monitoring
-            console.log(`OCR Progress: ${m.progress * 100}%`);
-          }
-        },
-      });
+      // Recognize text with progress tracking and timeout
+      const result = await Promise.race([
+        worker.recognize(url, {
+          logger: (m) => {
+            if (m.status === "recognizing text") {
+              console.log(`OCR Progress: ${m.progress * 100}%`);
+            }
+          },
+        }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("OCR processing timeout")), 180000)
+        ),
+      ]);
       extractedText = result.data.text;
+      console.log("OCR processing completed successfully");
 
       // Terminate worker
       await worker.terminate();
+      console.log("Worker terminated successfully");
     } catch (err: unknown) {
       status = "failed";
       error = err instanceof Error ? err.message : String(err);
+      console.error("OCR processing error:", error);
 
       // Ensure worker is terminated even if there's an error
       if (worker) {
         try {
           await worker.terminate();
         } catch (terminateError) {
-          if (isDevelopment) {
-            console.error("Error terminating worker:", terminateError);
-          }
+          console.error("Error terminating worker:", terminateError);
         }
       }
     }
 
     const processingTime = Date.now() - startTime;
+    console.log(`Total processing time: ${processingTime}ms`);
 
-    // Get the S3 URL for the image
-    const command = new GetObjectCommand({
-      Bucket: S3_BUCKET_NAME,
-      Key: imageFile.key || imageFile.originalname,
-    });
-    const imageUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+    // Get the S3 URL for the image with timeout
+    try {
+      const command = new GetObjectCommand({
+        Bucket: S3_BUCKET_NAME,
+        Key: imageFile.key || imageFile.originalname,
+      });
+      const imageUrl = await Promise.race([
+        getSignedUrl(s3Client, command, { expiresIn: 3600 }),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Final S3 URL generation timeout")),
+            30000
+          )
+        ),
+      ]);
 
-    return this.ocrResultRepository.create({
-      userId: new Types.ObjectId(userId),
-      originalImage: imageFile.key || imageFile.originalname,
-      imageUrl,
-      extractedText,
-      status,
-      error,
-      processingTime,
-    });
+      const result = await this.ocrResultRepository.create({
+        userId: new Types.ObjectId(userId),
+        originalImage: imageFile.key || imageFile.originalname,
+        imageUrl,
+        extractedText,
+        status,
+        error,
+        processingTime,
+      });
+      console.log("OCR result saved successfully");
+      return result;
+    } catch (err) {
+      console.error("Error saving OCR result:", err);
+      throw new Error("Failed to save OCR result");
+    }
   }
 
   async getUserResults(userId: string): Promise<IOcrResult[]> {

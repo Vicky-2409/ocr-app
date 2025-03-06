@@ -14,6 +14,12 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const isDevelopment = process.env.NODE_ENV !== "production";
 
+// Increase server timeout
+app.use((req, res, next) => {
+  res.setTimeout(300000); // 5 minutes
+  next();
+});
+
 // Log environment variables (excluding sensitive data)
 console.log("Environment:", {
   NODE_ENV: process.env.NODE_ENV,

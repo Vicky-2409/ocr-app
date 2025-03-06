@@ -25,6 +25,7 @@ export class OcrController {
   processImage = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       if (!req.file) {
+        console.error("No file uploaded");
         res.status(HttpStatus.BAD_REQUEST).json({
           success: false,
           message: Messages.OCR.INVALID_FILE,
@@ -32,7 +33,18 @@ export class OcrController {
         return;
       }
 
-      const result = await this.ocrService.processImage(req.user!.id, req.file);
+      if (!req.user?.id) {
+        console.error("No user ID found in request");
+        res.status(HttpStatus.UNAUTHORIZED).json({
+          success: false,
+          message: Messages.AUTH.UNAUTHORIZED,
+        });
+        return;
+      }
+
+      console.log("Processing image for user:", req.user.id);
+      const result = await this.ocrService.processImage(req.user.id, req.file);
+      console.log("Image processed successfully");
 
       res.status(HttpStatus.OK).json({
         success: true,
@@ -40,6 +52,27 @@ export class OcrController {
         data: transformOcrResult(result),
       });
     } catch (error) {
+      console.error("Error processing image:", error);
+
+      // Handle specific error types
+      if (error instanceof Error) {
+        if (error.message.includes("timeout")) {
+          res.status(HttpStatus.REQUEST_TIMEOUT).json({
+            success: false,
+            message: "OCR processing timed out. Please try again.",
+          });
+          return;
+        }
+
+        if (error.message.includes("S3")) {
+          res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: "Error accessing image storage. Please try again.",
+          });
+          return;
+        }
+      }
+
       res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message:
