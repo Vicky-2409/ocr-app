@@ -90,7 +90,26 @@ export class OcrService {
   }
 
   async getUserResults(userId: string): Promise<IOcrResult[]> {
-    return this.ocrResultRepository.findByUserId(new Types.ObjectId(userId));
+    const results = await this.ocrResultRepository.findByUserId(userId);
+
+    // Generate fresh signed URLs for each result
+    const resultsWithFreshUrls = await Promise.all(
+      results.map(async (result) => {
+        const command = new GetObjectCommand({
+          Bucket: S3_BUCKET_NAME,
+          Key: result.originalImage,
+        });
+        const freshImageUrl = await getSignedUrl(s3Client, command, {
+          expiresIn: 3600,
+        });
+        return {
+          ...result.toObject(),
+          imageUrl: freshImageUrl,
+        };
+      })
+    );
+
+    return resultsWithFreshUrls;
   }
 
   async getResultById(id: string): Promise<IOcrResult | null> {
