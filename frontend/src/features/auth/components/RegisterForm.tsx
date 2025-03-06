@@ -4,12 +4,29 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { RegisterCredentials } from "@/types/api";
+import { Input } from "@/components/ui/input";
+import { AlertCircle } from "lucide-react";
 
-const registerSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
+const registerSchema = z
+  .object({
+    name: z
+      .string()
+      .min(1, "Name is required")
+      .min(2, "Name must be at least 2 characters"),
+    email: z
+      .string()
+      .min(1, "Email is required")
+      .email("Please enter a valid email address"),
+    password: z
+      .string()
+      .min(1, "Password is required")
+      .min(6, "Password must be at least 6 characters"),
+    confirmPassword: z.string().min(1, "Please confirm your password"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 interface RegisterFormProps {
   onSubmit: (credentials: RegisterCredentials) => Promise<void>;
@@ -23,64 +40,169 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   const {
     register,
     handleSubmit,
-    formState: { errors },
-  } = useForm<RegisterCredentials>({
+    formState: { errors, touchedFields },
+    watch,
+  } = useForm<RegisterCredentials & { confirmPassword: string }>({
     resolver: zodResolver(registerSchema),
+    mode: "onChange",
   });
+
+  const name = watch("name");
+  const email = watch("email");
+  const password = watch("password");
+  const confirmPassword = watch("confirmPassword");
+
+  const getFieldWarning = (field: string) => {
+    if (!touchedFields[field as keyof typeof touchedFields]) return null;
+
+    switch (field) {
+      case "name":
+        if (!name) return "Name is required";
+        if (name.length < 2) return "Name must be at least 2 characters";
+        break;
+      case "email":
+        if (!email) return "Email is required";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+          return "Please enter a valid email address";
+        break;
+      case "password":
+        if (!password) return "Password is required";
+        if (password.length < 6)
+          return "Password must be at least 6 characters";
+        break;
+      case "confirmPassword":
+        if (!confirmPassword) return "Please confirm your password";
+        if (confirmPassword !== password) return "Passwords do not match";
+        break;
+    }
+    return null;
+  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div>
+      <div className="space-y-2">
         <label
           htmlFor="name"
           className="block text-sm font-medium text-gray-700"
         >
           Name
         </label>
-        <input
-          type="text"
-          id="name"
-          {...register("name")}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-        />
-        {errors.name && (
-          <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+        <div className="relative">
+          <Input
+            type="text"
+            id="name"
+            {...register("name")}
+            className={`w-full ${
+              touchedFields.name && errors.name ? "border-red-500" : ""
+            }`}
+            placeholder="Enter your name"
+          />
+          {touchedFields.name && errors.name && (
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+              <AlertCircle className="h-5 w-5 text-red-500" />
+            </div>
+          )}
+        </div>
+        {touchedFields.name && errors.name && (
+          <p className="mt-1 text-sm text-red-600 flex items-center">
+            <AlertCircle className="mr-1 h-4 w-4" />
+            {errors.name.message}
+          </p>
         )}
       </div>
 
-      <div>
+      <div className="space-y-2">
         <label
           htmlFor="email"
           className="block text-sm font-medium text-gray-700"
         >
           Email
         </label>
-        <input
-          type="email"
-          id="email"
-          {...register("email")}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-        />
-        {errors.email && (
-          <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+        <div className="relative">
+          <Input
+            type="email"
+            id="email"
+            {...register("email")}
+            className={`w-full ${
+              touchedFields.email && errors.email ? "border-red-500" : ""
+            }`}
+            placeholder="Enter your email"
+          />
+          {touchedFields.email && errors.email && (
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+              <AlertCircle className="h-5 w-5 text-red-500" />
+            </div>
+          )}
+        </div>
+        {touchedFields.email && errors.email && (
+          <p className="mt-1 text-sm text-red-600 flex items-center">
+            <AlertCircle className="mr-1 h-4 w-4" />
+            {errors.email.message}
+          </p>
         )}
       </div>
 
-      <div>
+      <div className="space-y-2">
         <label
           htmlFor="password"
           className="block text-sm font-medium text-gray-700"
         >
           Password
         </label>
-        <input
-          type="password"
-          id="password"
-          {...register("password")}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-        />
-        {errors.password && (
-          <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+        <div className="relative">
+          <Input
+            type="password"
+            id="password"
+            {...register("password")}
+            className={`w-full ${
+              touchedFields.password && errors.password ? "border-red-500" : ""
+            }`}
+            placeholder="Create a password"
+          />
+          {touchedFields.password && errors.password && (
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+              <AlertCircle className="h-5 w-5 text-red-500" />
+            </div>
+          )}
+        </div>
+        {touchedFields.password && errors.password && (
+          <p className="mt-1 text-sm text-red-600 flex items-center">
+            <AlertCircle className="mr-1 h-4 w-4" />
+            {errors.password.message}
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <label
+          htmlFor="confirmPassword"
+          className="block text-sm font-medium text-gray-700"
+        >
+          Confirm Password
+        </label>
+        <div className="relative">
+          <Input
+            type="password"
+            id="confirmPassword"
+            {...register("confirmPassword")}
+            className={`w-full ${
+              touchedFields.confirmPassword && errors.confirmPassword
+                ? "border-red-500"
+                : ""
+            }`}
+            placeholder="Confirm your password"
+          />
+          {touchedFields.confirmPassword && errors.confirmPassword && (
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+              <AlertCircle className="h-5 w-5 text-red-500" />
+            </div>
+          )}
+        </div>
+        {touchedFields.confirmPassword && errors.confirmPassword && (
+          <p className="mt-1 text-sm text-red-600 flex items-center">
+            <AlertCircle className="mr-1 h-4 w-4" />
+            {errors.confirmPassword.message}
+          </p>
         )}
       </div>
 
