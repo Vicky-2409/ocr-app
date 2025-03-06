@@ -6,9 +6,9 @@ import React, {
   useCallback,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { authService } from "@/services/api";
+import { authService } from "../../../services/api";
 import axios from "axios";
-import { User, RegisterCredentials } from "@/types/api";
+import { User, RegisterCredentials } from "../../../types/api";
 
 interface AuthContextType {
   isAuthenticated: boolean;
