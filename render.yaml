@@ -4,8 +4,12 @@ services:
     env: node
     buildCommand: |
       npm install -g typescript
-      cd backend && npm install && npm install @types/express @types/cors @types/multer @types/bcryptjs @types/jsonwebtoken @types/node @types/multer-s3 --save-dev && npm run build
-      cd ../frontend && npm install && npm run build
+      cd backend
+      npm ci
+      npm run build
+      cd ../frontend
+      npm ci
+      npm run build
       cd ..
     startCommand: cd backend && node dist/index.js
     envVars:

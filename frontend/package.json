@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postinstall": "npm install @types/react @types/react-dom @types/react-router-dom @types/node @types/react-dropzone @types/react-hot-toast @types/framer-motion @types/lucide-react @types/tailwindcss @types/clsx @types/tailwind-merge --save-dev"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",
@@ -31,6 +32,8 @@
     "@types/node": "^20.11.19",
     "@types/react": "^18.2.55",
     "@types/react-dom": "^18.2.19",
+    "@types/react-dropzone": "^5.1.0",
+    "@types/react-router-dom": "^5.3.3",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "@vitejs/plugin-react": "^4.2.1",
