@@ -44,10 +44,18 @@ export class OcrService {
         mimetype: imageFile.mimetype,
         size: imageFile.size,
         key: imageFile.key,
+        fieldname: imageFile.fieldname,
+        encoding: imageFile.encoding,
       });
 
       if (!imageFile.key) {
+        console.error("No file key found in uploaded file");
         throw new Error("No file key found in uploaded file");
+      }
+
+      if (!imageFile.buffer || imageFile.buffer.length === 0) {
+        console.error("No file buffer found in uploaded file");
+        throw new Error("No file buffer found in uploaded file");
       }
 
       // Create worker with timeout and retry
@@ -56,7 +64,12 @@ export class OcrService {
 
       while (retryCount < maxRetries) {
         try {
-          const workerPromise = createWorker();
+          console.log(`Attempt ${retryCount + 1} to create worker`);
+          const workerPromise = createWorker({
+            logger: (m) => {
+              console.log(`Worker status: ${m.status}`, m);
+            },
+          });
 
           worker = await Promise.race([
             workerPromise,
@@ -84,6 +97,7 @@ export class OcrService {
       retryCount = 0;
       while (retryCount < maxRetries) {
         try {
+          console.log(`Attempt ${retryCount + 1} to load language`);
           await Promise.race([
             worker.loadLanguage("eng"),
             new Promise((_, reject) =>
@@ -110,6 +124,7 @@ export class OcrService {
       retryCount = 0;
       while (retryCount < maxRetries) {
         try {
+          console.log(`Attempt ${retryCount + 1} to initialize worker`);
           await Promise.race([
             worker.initialize("eng"),
             new Promise((_, reject) =>
@@ -140,6 +155,7 @@ export class OcrService {
       let url: string | undefined;
       while (retryCount < maxRetries) {
         try {
+          console.log(`Attempt ${retryCount + 1} to generate S3 URL`);
           const command = new GetObjectCommand({
             Bucket: S3_BUCKET_NAME,
             Key: imageFile.key,
@@ -155,8 +171,10 @@ export class OcrService {
           ]);
           if (typeof signedUrl === "string") {
             url = signedUrl;
+            console.log("S3 URL generated successfully");
+          } else {
+            console.error("Invalid signed URL type:", typeof signedUrl);
           }
-          console.log("S3 URL generated successfully");
           break;
         } catch (err) {
           retryCount++;
@@ -169,25 +187,33 @@ export class OcrService {
       }
 
       if (!url) {
+        console.error("Failed to generate S3 URL after all attempts");
         throw new Error("Failed to generate S3 URL");
       }
 
       // Recognize text with progress tracking and timeout
       console.log("Starting OCR processing...");
-      const result = await Promise.race([
-        worker.recognize(url, {
-          logger: (m) => {
-            if (m.status === "recognizing text") {
-              console.log(`OCR Progress: ${m.progress * 100}%`);
-            }
-          },
-        }),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("OCR processing timeout")), 300000)
-        ),
-      ]);
-      extractedText = result.data.text;
-      console.log("OCR processing completed successfully");
+      try {
+        const result = await Promise.race([
+          worker.recognize(url, {
+            logger: (m) => {
+              console.log(`OCR Progress: ${m.status} - ${m.progress * 100}%`);
+            },
+          }),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("OCR processing timeout")),
+              300000
+            )
+          ),
+        ]);
+        extractedText = result.data.text;
+        console.log("OCR processing completed successfully");
+        console.log("Extracted text length:", extractedText.length);
+      } catch (err) {
+        console.error("Error during OCR recognition:", err);
+        throw err;
+      }
 
       // Terminate worker
       console.log("Terminating worker...");
@@ -201,6 +227,12 @@ export class OcrService {
         userId,
         processingTime: Date.now() - startTime,
         stack: err instanceof Error ? err.stack : undefined,
+        fileDetails: {
+          originalname: imageFile.originalname,
+          mimetype: imageFile.mimetype,
+          size: imageFile.size,
+          key: imageFile.key,
+        },
       });
 
       // Ensure worker is terminated even if there's an error
