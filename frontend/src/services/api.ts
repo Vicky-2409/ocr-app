@@ -8,7 +8,11 @@ import {
   User,
 } from "@/types/api";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+// In production, use relative path; in development, use environment variable or localhost
+const API_URL =
+  process.env.NODE_ENV === "production"
+    ? "/api"
+    : import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const api = axios.create({
   baseURL: API_URL,

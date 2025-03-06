@@ -24,6 +24,17 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/api/auth", authRoutes);
 app.use("/api/ocr", ocrRoutes);
 
+// Serve frontend static files in production
+if (process.env.NODE_ENV === "production") {
+  // Serve static files from frontend build directory
+  app.use(express.static(path.join(__dirname, "../../frontend/dist")));
+
+  // Handle React routing, return all requests to React app
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../../frontend/dist/index.html"));
+  });
+}
+
 // Error handling middleware
 app.use(
   (

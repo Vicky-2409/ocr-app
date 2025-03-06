@@ -1,8 +1,11 @@
 services:
   - type: web
-    name: ocr-app-backend
+    name: ocr-app
     env: node
-    buildCommand: cd backend && npm install && npm run build
+    buildCommand: |
+      npm install
+      cd frontend && npm install && npm run build
+      cd ../backend && npm install && npm run build
     startCommand: cd backend && node dist/index.js
     envVars:
       - key: NODE_ENV
@@ -25,12 +28,3 @@ services:
         sync: false
       - key: S3_BUCKET_NAME
         value: ocr-app-task
-
-  - type: web
-    name: ocr-app-frontend
-    env: static
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: ./frontend/dist
-    envVars:
-      - key: NODE_ENV
-        value: production
