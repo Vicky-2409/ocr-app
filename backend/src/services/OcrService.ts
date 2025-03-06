@@ -146,7 +146,7 @@ export class OcrService {
         imageUrl,
         extractedText,
         status,
-        error,
+        error: error || undefined,
         processingTime,
       });
       console.log("OCR result saved successfully");
