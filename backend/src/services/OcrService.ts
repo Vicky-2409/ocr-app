@@ -109,7 +109,8 @@ export class OcrService {
       // Generate fresh signed URLs for each result
       const resultsWithFreshUrls = await Promise.all(
         results.map(async (result) => {
-          const plainResult = result.toObject();
+          // Convert to plain object if it's a Mongoose document
+          const plainResult = result.toObject ? result.toObject() : result;
           try {
             const command = new GetObjectCommand({
               Bucket: S3_BUCKET_NAME,

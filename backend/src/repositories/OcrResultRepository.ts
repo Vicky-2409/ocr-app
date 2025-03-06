@@ -18,7 +18,8 @@ export class OcrResultRepository
     console.log("Repository: Finding results for user ID:", userId);
     const results = await (this.model as IOcrResultModel)
       .find({ userId })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
     console.log("Repository: Found results:", results);
     return results;
   }
