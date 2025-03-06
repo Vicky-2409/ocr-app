@@ -52,8 +52,17 @@ export class OcrController {
 
   getUserResults = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-      console.log("Getting results for user:", req.user!.id);
-      const results = await this.ocrService.getUserResults(req.user!.id);
+      if (!req.user?.id) {
+        console.error("No user ID found in request");
+        res.status(HttpStatus.UNAUTHORIZED).json({
+          success: false,
+          message: Messages.AUTH.UNAUTHORIZED,
+        });
+        return;
+      }
+
+      console.log("Getting results for user:", req.user.id);
+      const results = await this.ocrService.getUserResults(req.user.id);
       console.log(`Successfully retrieved ${results.length} results for user`);
 
       res.status(HttpStatus.OK).json({

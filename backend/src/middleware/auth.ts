@@ -36,7 +36,17 @@ export const authenticate = async (
     try {
       const decoded = authService.verifyToken(token);
       console.log("Decoded token:", decoded); // Debug log
-      req.user = decoded;
+
+      if (!decoded || !decoded.id) {
+        console.error("Invalid token payload:", decoded); // Debug log
+        throw new Error("Invalid token payload");
+      }
+
+      req.user = {
+        id: decoded.id,
+        email: decoded.email,
+      };
+      console.log("Set user in request:", req.user); // Debug log
       next();
     } catch (tokenError) {
       console.error("Token verification error:", tokenError); // Debug log
