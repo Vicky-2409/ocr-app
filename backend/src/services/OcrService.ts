@@ -65,11 +65,7 @@ export class OcrService {
       while (retryCount < maxRetries) {
         try {
           console.log(`Attempt ${retryCount + 1} to create worker`);
-          const workerPromise = createWorker({
-            logger: (m) => {
-              console.log(`Worker status: ${m.status}`, m);
-            },
-          });
+          const workerPromise = createWorker();
 
           worker = await Promise.race([
             workerPromise,
