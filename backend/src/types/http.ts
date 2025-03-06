@@ -1,5 +1,6 @@
 import { Request } from "express";
 import { Express } from "express";
+import { ParamsDictionary } from "express-serve-static-core";
 
 export interface AuthRequest extends Request {
   user?: {
@@ -8,12 +9,6 @@ export interface AuthRequest extends Request {
     name: string;
   };
   file?: Express.Multer.File;
-  params: {
-    [key: string]: string;
-  };
-  headers: {
-    [key: string]: string | undefined;
-  };
 }
 
 export enum HttpStatus {
