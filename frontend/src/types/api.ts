@@ -22,6 +22,7 @@ export interface OcrResult {
   id: string;
   userId: string;
   originalImage: string;
+  imageUrl: string;
   extractedText: string;
   processingTime: number;
   status: "success" | "failed";
