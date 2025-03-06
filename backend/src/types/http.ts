@@ -1,3 +1,20 @@
+import { Request } from "express";
+
+export interface AuthRequest extends Request {
+  user?: {
+    id: string;
+    email: string;
+    name: string;
+  };
+  file?: Express.Multer.File;
+  params: {
+    [key: string]: string;
+  };
+  headers: {
+    [key: string]: string | undefined;
+  };
+}
+
 export enum HttpStatus {
   OK = 200,
   CREATED = 201,

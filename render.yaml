@@ -4,8 +4,7 @@ services:
     env: node
     buildCommand: |
       npm install
-      cd frontend && npm install && npm run build
-      cd ../backend && npm install @types/express @types/cors @types/multer @types/bcryptjs @types/jsonwebtoken --save-dev && npm run build
+      npm run build --workspaces
     startCommand: cd backend && node dist/index.js
     envVars:
       - key: NODE_ENV
