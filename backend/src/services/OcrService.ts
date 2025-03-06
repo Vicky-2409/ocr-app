@@ -34,6 +34,8 @@ export class OcrService {
     let status: "success" | "failed" = "success";
     let error: string | undefined;
     let worker;
+    let retryCount = 0;
+    const maxRetries = 3;
 
     try {
       console.log("Starting OCR processing for user:", userId);
@@ -50,24 +52,11 @@ export class OcrService {
 
       // Create worker with timeout and retry
       console.log("Creating OCR worker...");
-      let retryCount = 0;
-      const maxRetries = 3;
+      retryCount = 0;
 
       while (retryCount < maxRetries) {
         try {
-          const workerPromise = createWorker({
-            logger: (m) => {
-              if (m.status === "creating worker") {
-                console.log("Creating worker...");
-              } else if (m.status === "loading language") {
-                console.log("Loading language...");
-              } else if (m.status === "initializing") {
-                console.log("Initializing worker...");
-              } else if (m.status === "recognizing text") {
-                console.log(`OCR Progress: ${m.progress * 100}%`);
-              }
-            },
-          });
+          const workerPromise = createWorker();
 
           worker = await Promise.race([
             workerPromise,
@@ -148,7 +137,7 @@ export class OcrService {
       // Get the image from S3 with timeout and retry
       console.log("Generating S3 URL...");
       retryCount = 0;
-      let url: string;
+      let url: string | undefined;
       while (retryCount < maxRetries) {
         try {
           const command = new GetObjectCommand({
@@ -176,10 +165,14 @@ export class OcrService {
         }
       }
 
+      if (!url) {
+        throw new Error("Failed to generate S3 URL");
+      }
+
       // Recognize text with progress tracking and timeout
       console.log("Starting OCR processing...");
       const result = await Promise.race([
-        worker.recognize(url!, {
+        worker.recognize(url, {
           logger: (m) => {
             if (m.status === "recognizing text") {
               console.log(`OCR Progress: ${m.progress * 100}%`);
@@ -224,7 +217,7 @@ export class OcrService {
     try {
       console.log("Generating final S3 URL...");
       retryCount = 0;
-      let imageUrl: string;
+      let imageUrl: string | undefined;
       while (retryCount < maxRetries) {
         try {
           const command = new GetObjectCommand({
@@ -255,11 +248,15 @@ export class OcrService {
         }
       }
 
+      if (!imageUrl) {
+        throw new Error("Failed to generate final S3 URL");
+      }
+
       console.log("Saving OCR result...");
       const result = await this.ocrResultRepository.create({
         userId: new Types.ObjectId(userId),
         originalImage: imageFile.key || imageFile.originalname,
-        imageUrl: imageUrl!,
+        imageUrl,
         extractedText,
         status,
         error: error || undefined,
