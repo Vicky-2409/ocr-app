@@ -165,40 +165,59 @@ export class OcrService {
       );
       console.log(`Found ${results.length} results for user`);
 
+      if (!results || results.length === 0) {
+        console.log("No results found for user");
+        return [];
+      }
+
       // Generate fresh signed URLs for each result
       const resultsWithFreshUrls = await Promise.all(
         results.map(async (result) => {
-          // Convert to plain object if it's a Mongoose document
-          const plainResult = result.toObject ? result.toObject() : result;
           try {
+            // Ensure we have a valid result object
+            if (!result || !result.originalImage) {
+              console.error("Invalid result object:", result);
+              return null;
+            }
+
             const command = new GetObjectCommand({
               Bucket: S3_BUCKET_NAME,
-              Key: plainResult.originalImage,
+              Key: result.originalImage,
             });
             const freshImageUrl = await getSignedUrl(s3Client, command, {
               expiresIn: 3600,
             });
             return {
-              ...plainResult,
+              ...result,
               imageUrl: freshImageUrl,
             };
           } catch (error) {
             console.error(
-              `Error generating signed URL for image ${plainResult.originalImage}:`,
+              `Error generating signed URL for image ${result.originalImage}:`,
               error
             );
             // Return the result with the original URL if signing fails
             return {
-              ...plainResult,
-              imageUrl: plainResult.imageUrl,
+              ...result,
+              imageUrl: result.imageUrl,
             };
           }
         })
       );
 
-      return resultsWithFreshUrls;
+      // Filter out any null results and return
+      return resultsWithFreshUrls.filter(
+        (result): result is IOcrResult => result !== null
+      );
     } catch (error) {
       console.error("Error in getUserResults:", error);
+      if (error instanceof Error) {
+        console.error("Error details:", {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+        });
+      }
       throw error;
     }
   }

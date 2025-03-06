@@ -7,7 +7,9 @@ import { IOcrResult } from "../models/OcrResult";
 
 // Utility function to transform MongoDB document to frontend format
 const transformOcrResult = (result: IOcrResult) => {
-  const { _id, userId, ...rest } = result.toObject();
+  // Handle both Mongoose documents and plain objects
+  const plainResult = result.toObject ? result.toObject() : result;
+  const { _id, userId, ...rest } = plainResult;
   return {
     id: _id.toString(),
     userId: userId.toString(),
@@ -107,10 +109,31 @@ export class OcrController {
       console.error("Error getting user results:", error);
       // Log more details about the error
       if (error instanceof Error) {
-        console.error("Error name:", error.name);
-        console.error("Error message:", error.message);
-        console.error("Error stack:", error.stack);
+        console.error("Error details:", {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+        });
       }
+
+      // Handle specific error types
+      if (error instanceof Error) {
+        if (error.message.includes("MongoDB")) {
+          res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: "Database error occurred. Please try again later.",
+          });
+          return;
+        }
+        if (error.message.includes("S3")) {
+          res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: "Error accessing image storage. Please try again later.",
+          });
+          return;
+        }
+      }
+
       res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message:
