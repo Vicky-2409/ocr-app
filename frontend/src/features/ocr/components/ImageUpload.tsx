@@ -1,10 +1,11 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Upload, Image as ImageIcon, AlertCircle, X } from "lucide-react";
 import { isValidImageFile } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { Progress } from "@/components/ui/progress";
 
 interface ImageUploadProps {
   onUpload: (file: File) => void;
@@ -16,6 +17,25 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   isUploading,
 }) => {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [status, setStatus] = useState<string>("");
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isUploading) {
+      setStatus("Uploading image...");
+      interval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 30) return 30; // Cap at 30% for upload phase
+          return prev + 5;
+        });
+      }, 500);
+    } else {
+      setProgress(0);
+      setStatus("");
+    }
+    return () => clearInterval(interval);
+  }, [isUploading]);
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
@@ -49,6 +69,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
 
   const clearPreview = () => {
     setPreviewImage(null);
+    setProgress(0);
   };
 
   return (
@@ -69,19 +90,19 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
               }`}
             >
               <input {...getInputProps()} />
-              
+
               {/* Animated Background Pattern */}
               <div className="absolute inset-0 -z-10 opacity-[0.03]">
                 <div className="absolute inset-0 bg-[linear-gradient(45deg,#000_25%,transparent_25%,transparent_75%,#000_75%,#000),linear-gradient(45deg,#000_25%,transparent_25%,transparent_75%,#000_75%,#000)] bg-[length:60px_60px] bg-[position:0_0,30px_30px]" />
               </div>
 
-              <motion.div 
+              <motion.div
                 className="flex flex-col items-center space-y-6"
                 initial={{ scale: 0.95 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 300, damping: 25 }}
               >
-                <motion.div 
+                <motion.div
                   className="relative"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -140,8 +161,20 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
               className="w-full h-64 object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
-              <p className="text-sm opacity-90">Processing your image...</p>
+            <div className="absolute bottom-0 left-0 right-0 p-4">
+              <div className="space-y-2">
+                <p className="text-white text-sm opacity-90">
+                  {isUploading ? status : "Image ready"}
+                </p>
+                {isUploading && (
+                  <div className="space-y-1">
+                    <Progress value={progress} className="h-1" />
+                    <p className="text-white/80 text-xs">
+                      {progress}% complete
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
             {!isUploading && (
               <Button
@@ -170,31 +203,15 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
                 <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-error-500" />
                 <div>
                   <p className="font-medium">Invalid file</p>
-                  <p className="mt-1 text-sm text-error-600">{fileRejections[0].errors[0].message}</p>
+                  <p className="mt-1 text-sm text-error-600">
+                    {fileRejections[0].errors[0].message}
+                  </p>
                 </div>
               </div>
             </div>
           </motion.div>
         )}
-
-        {isUploading && !fileRejections.length && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="mt-4"
-          >
-            <Button
-              disabled
-              variant="outline"
-              loading
-              className="w-full bg-white/50 backdrop-blur-sm"
-            >
-              Processing your image...
-            </Button>
-          </motion.div>
-        )}
       </AnimatePresence>
     </div>
   );
-}
+};

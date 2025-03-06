@@ -38,6 +38,8 @@ export class OcrService {
     try {
       // Create worker
       worker = await createWorker();
+      await worker.loadLanguage("eng");
+      await worker.initialize("eng");
 
       // Get the image from S3
       const command = new GetObjectCommand({
@@ -47,8 +49,15 @@ export class OcrService {
 
       const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
 
-      // Recognize text
-      const result = await worker.recognize(url);
+      // Recognize text with progress tracking
+      const result = await worker.recognize(url, {
+        logger: (m) => {
+          if (m.status === "recognizing text") {
+            // Log progress for monitoring
+            console.log(`OCR Progress: ${m.progress * 100}%`);
+          }
+        },
+      });
       extractedText = result.data.text;
 
       // Terminate worker

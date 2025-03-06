@@ -10,6 +10,7 @@ import { Loader2, History, Upload, FileText, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -27,11 +28,15 @@ const fadeIn = {
 
 export const OcrPage: React.FC = () => {
   const navigate = useNavigate();
-  const [currentResult, setCurrentResult] = useState<OcrResultType | null>(null);
+  const [currentResult, setCurrentResult] = useState<OcrResultType | null>(
+    null
+  );
   const [isUploading, setIsUploading] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState<string>("");
 
   const handleUpload = async (file: File) => {
     setIsUploading(true);
+    setProcessingStatus("Uploading image...");
     try {
       const response = await ocrService.processImage(file);
       if (response.success) {
@@ -43,6 +48,7 @@ export const OcrPage: React.FC = () => {
       toast.error("Failed to process image");
     } finally {
       setIsUploading(false);
+      setProcessingStatus("");
     }
   };
 
@@ -69,7 +75,7 @@ export const OcrPage: React.FC = () => {
           {/* Header Section */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex-1">
-              <motion.h1 
+              <motion.h1
                 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-primary-800"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -77,14 +83,15 @@ export const OcrPage: React.FC = () => {
               >
                 OCR Processing
               </motion.h1>
-              <motion.p 
+              <motion.p
                 className="mt-2 text-secondary-600 max-w-xl"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
               >
-                Transform your images into editable text with our advanced OCR technology. 
-                Upload any document and get accurate text extraction in seconds.
+                Transform your images into editable text with our advanced OCR
+                technology. Upload any document and get accurate text extraction
+                in seconds.
               </motion.p>
             </div>
             <motion.div
@@ -108,10 +115,7 @@ export const OcrPage: React.FC = () => {
           <Card className="border-0 shadow-glass bg-white/80 backdrop-blur-md">
             <CardContent className="p-8">
               <AnimatePresence mode="wait">
-                <motion.div
-                  key="upload-section"
-                  {...fadeIn}
-                >
+                <motion.div key="upload-section" {...fadeIn}>
                   <ImageUpload
                     onUpload={handleUpload}
                     isUploading={isUploading}
@@ -131,47 +135,77 @@ export const OcrPage: React.FC = () => {
               >
                 <OcrResult result={currentResult} onDelete={handleDelete} />
               </motion.div>
-            ) : (
-              !isUploading && (
+            ) : !isUploading ? (
+              <motion.div
+                key="empty-state"
+                {...fadeIn}
+                className="text-center py-16"
+              >
                 <motion.div
-                  key="empty-state"
-                  {...fadeIn}
-                  className="text-center py-16"
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
                 >
-                  <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                  >
-                    <div className="relative mx-auto w-fit">
-                      <FileText className="h-16 w-16 text-primary-200" />
-                      <Upload className="h-8 w-8 text-primary-400 absolute -right-2 -bottom-2" />
-                    </div>
-                  </motion.div>
-                  <motion.p
-                    className="text-secondary-600 mt-6 mb-4 text-lg"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    Upload an image to start extracting text
-                  </motion.p>
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.4 }}
-                  >
-                    <Button
-                      variant="link"
-                      onClick={() => navigate("/history")}
-                      className="text-primary-600 hover:text-primary-700"
-                      rightIcon={<ArrowRight className="h-4 w-4" />}
-                    >
-                      View previous results in history
-                    </Button>
-                  </motion.div>
+                  <div className="relative mx-auto w-fit">
+                    <FileText className="h-16 w-16 text-primary-200" />
+                    <Upload className="h-8 w-8 text-primary-400 absolute -right-2 -bottom-2" />
+                  </div>
                 </motion.div>
-              )
+                <motion.p
+                  className="text-secondary-600 mt-6 mb-4 text-lg"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  Upload an image to start extracting text
+                </motion.p>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <Button
+                    variant="link"
+                    onClick={() => navigate("/history")}
+                    className="text-primary-600 hover:text-primary-700"
+                    rightIcon={<ArrowRight className="h-4 w-4" />}
+                  >
+                    View previous results in history
+                  </Button>
+                </motion.div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="processing"
+                {...fadeIn}
+                className="text-center py-16"
+              >
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                >
+                  <div className="relative mx-auto w-fit">
+                    <FileText className="h-16 w-16 text-primary-200" />
+                    <Upload className="h-8 w-8 text-primary-400 absolute -right-2 -bottom-2" />
+                  </div>
+                </motion.div>
+                <motion.p
+                  className="text-secondary-600 mt-6 mb-4 text-lg"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  {processingStatus}
+                </motion.p>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <Progress value={30} className="h-1 w-48 mx-auto" />
+                </motion.div>
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
