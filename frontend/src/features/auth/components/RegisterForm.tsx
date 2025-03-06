@@ -1,11 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { RegisterCredentials } from "@/types/api";
 import { Input } from "@/components/ui/input";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Eye, EyeOff } from "lucide-react";
 
 const registerSchema = z
   .object({
@@ -37,6 +37,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   onSubmit,
   isLoading,
 }) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const {
     register,
     handleSubmit,
@@ -151,7 +153,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
         </label>
         <div className="relative">
           <Input
-            type="password"
+            type={showPassword ? "text" : "password"}
             id="password"
             {...register("password")}
             className={`w-full ${
@@ -159,8 +161,19 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             }`}
             placeholder="Create a password"
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+          >
+            {showPassword ? (
+              <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+            ) : (
+              <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+            )}
+          </button>
           {touchedFields.password && errors.password && (
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+            <div className="absolute inset-y-0 right-10 pr-3 flex items-center pointer-events-none">
               <AlertCircle className="h-5 w-5 text-red-500" />
             </div>
           )}
@@ -182,7 +195,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
         </label>
         <div className="relative">
           <Input
-            type="password"
+            type={showConfirmPassword ? "text" : "password"}
             id="confirmPassword"
             {...register("confirmPassword")}
             className={`w-full ${
@@ -192,8 +205,19 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             }`}
             placeholder="Confirm your password"
           />
+          <button
+            type="button"
+            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+          >
+            {showConfirmPassword ? (
+              <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+            ) : (
+              <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+            )}
+          </button>
           {touchedFields.confirmPassword && errors.confirmPassword && (
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+            <div className="absolute inset-y-0 right-10 pr-3 flex items-center pointer-events-none">
               <AlertCircle className="h-5 w-5 text-red-500" />
             </div>
           )}

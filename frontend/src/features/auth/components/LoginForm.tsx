@@ -1,11 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { LoginCredentials } from "@/types/api";
 import { Input } from "@/components/ui/input";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Eye, EyeOff } from "lucide-react";
 
 const loginSchema = z.object({
   email: z
@@ -27,6 +27,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   onSubmit,
   isLoading,
 }) => {
+  const [showPassword, setShowPassword] = useState(false);
   const {
     register,
     handleSubmit,
@@ -97,7 +98,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         </label>
         <div className="relative">
           <Input
-            type="password"
+            type={showPassword ? "text" : "password"}
             id="password"
             {...register("password")}
             className={`w-full ${
@@ -105,8 +106,19 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             }`}
             placeholder="Enter your password"
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+          >
+            {showPassword ? (
+              <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+            ) : (
+              <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+            )}
+          </button>
           {touchedFields.password && errors.password && (
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+            <div className="absolute inset-y-0 right-10 pr-3 flex items-center pointer-events-none">
               <AlertCircle className="h-5 w-5 text-red-500" />
             </div>
           )}
