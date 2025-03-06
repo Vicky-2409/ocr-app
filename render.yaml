@@ -2,15 +2,7 @@ services:
   - type: web
     name: ocr-app
     env: node
-    buildCommand: |
-      npm install -g typescript
-      cd backend
-      npm ci
-      npm run build
-      cd ../frontend
-      npm ci
-      npm run build
-      cd ..
+    buildCommand: npm install -g typescript && cd backend && npm ci && npm run build && cd ../frontend && npm ci && npm run build && cd ..
     startCommand: cd backend && node dist/index.js
     envVars:
       - key: NODE_ENV
