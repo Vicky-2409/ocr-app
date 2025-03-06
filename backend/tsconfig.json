@@ -5,15 +5,14 @@
     "lib": ["es2020"],
     "outDir": "./dist",
     "rootDir": "./src",
-    "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "noImplicitAny": false,
-    "typeRoots": ["./node_modules/@types"],
-    "types": ["node", "express", "multer", "multer-s3"]
+    "strict": false,
+    "typeRoots": ["./node_modules/@types"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

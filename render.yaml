@@ -3,9 +3,9 @@ services:
     name: ocr-app
     env: node
     buildCommand: |
-      npm install -g vite typescript
-      cd frontend && npm install && npm run build
-      cd ../backend && npm install && npm install @types/express @types/cors @types/multer @types/bcryptjs @types/jsonwebtoken @types/node @types/multer-s3 --save-dev && NODE_PATH=./node_modules npm run build
+      npm install -g typescript
+      cd backend && npm install && npm install @types/express @types/cors @types/multer @types/bcryptjs @types/jsonwebtoken @types/node @types/multer-s3 --save-dev && npm run build
+      cd ../frontend && npm install && npm run build
       cd ..
     startCommand: cd backend && node dist/index.js
     envVars:

@@ -11,7 +11,8 @@
     "build": "tsc",
     "test": "jest",
     "lint": "eslint . --ext .ts",
-    "setup-s3": "ts-node src/scripts/setup-s3.ts"
+    "setup-s3": "ts-node src/scripts/setup-s3.ts",
+    "postinstall": "npm install @types/express @types/cors @types/multer @types/bcryptjs @types/jsonwebtoken @types/node @types/multer-s3 --save-dev"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.758.0",
