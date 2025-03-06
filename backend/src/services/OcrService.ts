@@ -144,7 +144,7 @@ export class OcrService {
             Bucket: S3_BUCKET_NAME,
             Key: imageFile.key,
           });
-          url = await Promise.race([
+          const signedUrl = await Promise.race([
             getSignedUrl(s3Client, command, { expiresIn: 3600 }),
             new Promise((_, reject) =>
               setTimeout(
@@ -153,6 +153,9 @@ export class OcrService {
               )
             ),
           ]);
+          if (typeof signedUrl === "string") {
+            url = signedUrl;
+          }
           console.log("S3 URL generated successfully");
           break;
         } catch (err) {
@@ -224,7 +227,7 @@ export class OcrService {
             Bucket: S3_BUCKET_NAME,
             Key: imageFile.key || imageFile.originalname,
           });
-          imageUrl = await Promise.race([
+          const signedUrl = await Promise.race([
             getSignedUrl(s3Client, command, { expiresIn: 3600 }),
             new Promise((_, reject) =>
               setTimeout(
@@ -233,6 +236,9 @@ export class OcrService {
               )
             ),
           ]);
+          if (typeof signedUrl === "string") {
+            imageUrl = signedUrl;
+          }
           console.log("Final S3 URL generated successfully");
           break;
         } catch (err) {
