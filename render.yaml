@@ -16,7 +16,7 @@ services:
       - key: MAX_FILE_SIZE
         value: 5242880
       - key: ALLOWED_FILE_TYPES
-        value: image/jpeg,image/png
+        value: image/jpeg,image/png,image/jpg
       - key: AWS_REGION
         sync: false
       - key: AWS_ACCESS_KEY_ID
@@ -26,4 +26,14 @@ services:
       - key: S3_BUCKET_NAME
         sync: false
     healthCheckPath: /api/health
+    autoDeploy: true
+
+  - type: static
+    name: ocr-app-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://ocr-app-backend-y3i5.onrender.com/api
     autoDeploy: true
