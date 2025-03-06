@@ -7,7 +7,7 @@
     "backend"
   ],
   "scripts": {
-    "build": "npm run build --workspaces",
+    "build": "cd backend && npm ci && npm run build && cd ../frontend && npm ci && npm run build",
     "start": "cd backend && npm start",
     "dev": "concurrently \"npm run dev --workspace=frontend\" \"npm run dev --workspace=backend\""
   },
