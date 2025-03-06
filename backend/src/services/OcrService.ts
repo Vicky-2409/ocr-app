@@ -99,28 +99,47 @@ export class OcrService {
   }
 
   async getUserResults(userId: string): Promise<IOcrResult[]> {
-    const results = await this.ocrResultRepository.findByUserId(
-      new Types.ObjectId(userId)
-    );
+    try {
+      console.log("Getting results for user ID:", userId);
+      const results = await this.ocrResultRepository.findByUserId(
+        new Types.ObjectId(userId)
+      );
+      console.log(`Found ${results.length} results for user`);
 
-    // Generate fresh signed URLs for each result
-    const resultsWithFreshUrls = await Promise.all(
-      results.map(async (result) => {
-        const command = new GetObjectCommand({
-          Bucket: S3_BUCKET_NAME,
-          Key: result.originalImage,
-        });
-        const freshImageUrl = await getSignedUrl(s3Client, command, {
-          expiresIn: 3600,
-        });
-        return {
-          ...result.toObject(),
-          imageUrl: freshImageUrl,
-        };
-      })
-    );
+      // Generate fresh signed URLs for each result
+      const resultsWithFreshUrls = await Promise.all(
+        results.map(async (result) => {
+          try {
+            const command = new GetObjectCommand({
+              Bucket: S3_BUCKET_NAME,
+              Key: result.originalImage,
+            });
+            const freshImageUrl = await getSignedUrl(s3Client, command, {
+              expiresIn: 3600,
+            });
+            return {
+              ...result.toObject(),
+              imageUrl: freshImageUrl,
+            };
+          } catch (error) {
+            console.error(
+              `Error generating signed URL for image ${result.originalImage}:`,
+              error
+            );
+            // Return the result with the original URL if signing fails
+            return {
+              ...result.toObject(),
+              imageUrl: result.imageUrl,
+            };
+          }
+        })
+      );
 
-    return resultsWithFreshUrls;
+      return resultsWithFreshUrls;
+    } catch (error) {
+      console.error("Error in getUserResults:", error);
+      throw error;
+    }
   }
 
   async getResultById(id: string): Promise<IOcrResult | null> {

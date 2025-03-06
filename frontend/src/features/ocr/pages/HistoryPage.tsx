@@ -30,10 +30,17 @@ export const HistoryPage: React.FC = () => {
       const response = await ocrService.getUserResults();
       if (response.success) {
         setResults(response.data);
+      } else {
+        console.error("Failed to load results:", response.message);
+        toast.error(response.message || "Failed to load OCR history");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading results:", error);
-      toast.error("Failed to load OCR history");
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to load OCR history";
+      toast.error(errorMessage);
     } finally {
       setIsLoadingResults(false);
     }

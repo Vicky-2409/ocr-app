@@ -54,7 +54,7 @@ export class OcrController {
     try {
       console.log("Getting results for user:", req.user!.id);
       const results = await this.ocrService.getUserResults(req.user!.id);
-      console.log("Found results:", results);
+      console.log(`Successfully retrieved ${results.length} results for user`);
 
       res.status(HttpStatus.OK).json({
         success: true,
@@ -63,6 +63,12 @@ export class OcrController {
       });
     } catch (error) {
       console.error("Error getting user results:", error);
+      // Log more details about the error
+      if (error instanceof Error) {
+        console.error("Error name:", error.name);
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+      }
       res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         message:
