@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { authService } from "@/services/api";
 import axios from "axios";
+import { RegisterCredentials } from "@/types/api";
 
 export const useAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
