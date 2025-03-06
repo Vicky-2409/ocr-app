@@ -3,6 +3,7 @@ import { Schema, model, Document, Model, Types } from "mongoose";
 export interface IOcrResult extends Document {
   userId: Types.ObjectId;
   originalImage: string;
+  imageUrl: string;
   extractedText: string;
   processingTime: number;
   status: "success" | "failed";
@@ -21,6 +22,10 @@ const ocrResultSchema = new Schema<IOcrResult, IOcrResultModel>(
       required: true,
     },
     originalImage: {
+      type: String,
+      required: true,
+    },
+    imageUrl: {
       type: String,
       required: true,
     },
@@ -53,13 +58,7 @@ ocrResultSchema.index({ userId: 1, createdAt: -1 });
 ocrResultSchema.static(
   "findByUserId",
   function (userId: Types.ObjectId): Promise<IOcrResult[]> {
-    console.log("Finding results for user ID:", userId);
-    return this.find({ userId })
-      .sort({ createdAt: -1 })
-      .then((results) => {
-        console.log("Found results:", results);
-        return results;
-      });
+    return this.find({ userId }).sort({ createdAt: -1 });
   }
 );
 

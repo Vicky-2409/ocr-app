@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: ocr-app-backend
+    env: node
+    buildCommand: cd backend && npm install && npm run build
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: MAX_FILE_SIZE
+        value: 5242880
+      - key: ALLOWED_FILE_TYPES
+        value: image/jpeg,image/png
+      - key: AWS_REGION
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_BUCKET_NAME
+        sync: false
+    healthCheckPath: /api/health
+    autoDeploy: true

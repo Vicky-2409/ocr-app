@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { authService } from "@/services/api";
 import axios from "axios";
@@ -15,7 +21,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     const token = localStorage.getItem("token");
     return !!token;
@@ -75,7 +83,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error(response.message || "Login failed");
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 401) {
-        throw new Error("Invalid email or password. Please check your credentials.");
+        throw new Error(
+          "Invalid email or password. Please check your credentials."
+        );
       }
       throw error;
     }
@@ -89,17 +99,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     navigate("/login", { replace: true });
   }, [navigate]);
 
-  const register = useCallback(async (name: string, email: string, password: string) => {
-    try {
-      const response = await authService.register({ name, email, password });
-      if (response.success) {
-        return response;
+  const register = useCallback(
+    async (name: string, email: string, password: string) => {
+      try {
+        const response = await authService.register({ name, email, password });
+        if (response.success) {
+          return response;
+        }
+        throw new Error(response.message || "Registration failed");
+      } catch (error) {
+        throw error;
       }
-      throw new Error(response.message || "Registration failed");
-    } catch (error) {
-      throw error;
-    }
-  }, []);
+    },
+    []
+  );
 
   return (
     <AuthContext.Provider

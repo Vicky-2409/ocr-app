@@ -9,7 +9,11 @@ export class AuthService {
 
   constructor() {
     this.userRepository = new UserRepository();
-    this.JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret";
+    this.JWT_SECRET = process.env.JWT_SECRET;
+    if (!this.JWT_SECRET) {
+      throw new Error("JWT_SECRET environment variable is not set");
+    }
+    console.log("JWT_SECRET loaded:", this.JWT_SECRET ? "Yes" : "No");
   }
 
   async register(userData: {
@@ -29,17 +33,25 @@ export class AuthService {
     email: string,
     password: string
   ): Promise<{ user: IUser; token: string }> {
+    console.log("AuthService login attempt");
     const user = await this.userRepository.findByEmail(email);
     if (!user) {
+      console.log("User not found");
       throw new Error(Messages.AUTH.INVALID_CREDENTIALS);
     }
 
     const isValidPassword = await user.comparePassword(password);
     if (!isValidPassword) {
+      console.log("Invalid password");
       throw new Error(Messages.AUTH.INVALID_CREDENTIALS);
     }
 
+    console.log(
+      "Generating token with secret:",
+      this.JWT_SECRET ? "Present" : "Missing"
+    );
     const token = this.generateToken(user);
+    console.log("Token generated successfully");
 
     return {
       user,

@@ -39,8 +39,10 @@ export class AuthController {
   login = async (req: Request, res: Response): Promise<void> => {
     try {
       const { email, password } = req.body;
+      console.log("Login attempt for email:", email);
 
       const { user, token } = await this.authService.login(email, password);
+      console.log("Login successful, token generated");
 
       res.status(HttpStatus.OK).json({
         success: true,
@@ -55,6 +57,7 @@ export class AuthController {
         },
       });
     } catch (error) {
+      console.error("Login error:", error);
       res.status(HttpStatus.UNAUTHORIZED).json({
         success: false,
         message:

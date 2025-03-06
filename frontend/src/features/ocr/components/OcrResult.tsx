@@ -25,12 +25,9 @@ interface OcrResultProps {
   onDelete?: (id: string) => void;
 }
 
-// Replace dynamic API URL with relative path
-const API_URL = "/api";
-
 export const OcrResult: React.FC<OcrResultProps> = ({ result, onDelete }) => {
   const [copied, setCopied] = useState(false);
-  const imageUrl = `${API_URL}/images/${result.originalImage}`;
+  const imageUrl = result.imageUrl;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(result.extractedText || "");

@@ -8,8 +8,8 @@ import {
   User,
 } from "@/types/api";
 
-// In production, use relative path; in development, use environment variable or localhost
-const API_URL = process.env.NODE_ENV === "production" ? "/api" : "/api"; // Always use relative path
+// Use the environment variable for API URL
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 const api = axios.create({
   baseURL: API_URL,
@@ -59,14 +59,19 @@ export const ocrService = {
   async processImage(file: File): Promise<ApiResponse<OcrResult>> {
     const formData = new FormData();
     formData.append("image", file);
+    const token = localStorage.getItem("token");
+    console.log("Token from localStorage:", token); // Debug log
+
+    const headers = {
+      "Content-Type": "multipart/form-data",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    };
+    console.log("Request headers:", headers); // Debug log
+
     const response = await api.post<ApiResponse<OcrResult>>(
       "/ocr/process",
       formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
+      { headers }
     );
     return response.data;
   },

@@ -1,24 +1,30 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
-import dotenv from "dotenv";
 import path from "path";
 import authRoutes from "./routes/auth";
 import ocrRoutes from "./routes/ocr";
 import { HttpStatus } from "./types/http";
 import { Messages } from "./constants/messages";
 
-dotenv.config();
-
 const app = express();
 const PORT = process.env.PORT || 5000;
+const isDevelopment = process.env.NODE_ENV !== "production";
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Serve uploaded images
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  res.status(HttpStatus.OK).json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // Routes
 app.use("/api/auth", authRoutes);
@@ -43,7 +49,9 @@ app.use(
     res: express.Response,
     next: express.NextFunction
   ) => {
-    console.error(err.stack);
+    if (isDevelopment) {
+      console.error(err.stack);
+    }
     res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: Messages.GENERAL.SERVER_ERROR,
@@ -55,12 +63,18 @@ app.use(
 mongoose
   .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/ocr-app")
   .then(() => {
-    console.log("Connected to MongoDB");
+    if (isDevelopment) {
+      console.log("Connected to MongoDB");
+    }
     app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+      if (isDevelopment) {
+        console.log(`Server is running on port ${PORT}`);
+      }
     });
   })
   .catch((error) => {
-    console.error("MongoDB connection error:", error);
+    if (isDevelopment) {
+      console.error("MongoDB connection error:", error);
+    }
     process.exit(1);
   });

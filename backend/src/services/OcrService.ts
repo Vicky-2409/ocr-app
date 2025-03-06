@@ -3,9 +3,8 @@ import { IOcrResult, OcrResult } from "../models/OcrResult";
 import { OcrResultRepository } from "../repositories/OcrResultRepository";
 import { Messages } from "../constants/messages";
 import { Types } from "mongoose";
-import { DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client, S3_BUCKET_NAME } from "../config/aws";
-import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 interface S3File extends Express.Multer.File {
@@ -19,6 +18,8 @@ interface S3File extends Express.Multer.File {
   originalname: string;
   buffer: Buffer;
 }
+
+const isDevelopment = process.env.NODE_ENV !== "production";
 
 export class OcrService {
   private ocrResultRepository: OcrResultRepository;
@@ -35,17 +36,8 @@ export class OcrService {
     let worker;
 
     try {
-      console.log("Starting OCR process...");
-      console.log("Image details:", {
-        mimetype: imageFile.mimetype,
-        size: imageFile.size,
-        originalname: imageFile.originalname,
-        key: imageFile.key,
-      });
-
       // Create worker
       worker = await createWorker();
-      console.log("Worker created successfully");
 
       // Get the image from S3
       const command = new GetObjectCommand({
@@ -54,49 +46,42 @@ export class OcrService {
       });
 
       const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-      console.log("Got signed URL for image");
 
       // Recognize text
-      console.log("Starting text recognition...");
       const result = await worker.recognize(url);
-      console.log("Text recognition completed");
-
       extractedText = result.data.text;
-      console.log("Extracted text length:", extractedText.length);
 
       // Terminate worker
       await worker.terminate();
-      console.log("Worker terminated successfully");
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      const errorName = err instanceof Error ? err.name : "Unknown";
-      const errorStack = err instanceof Error ? err.stack : undefined;
-
-      console.error("Detailed OCR Error:", {
-        name: errorName,
-        message: errorMessage,
-        stack: errorStack,
-      });
-
       status = "failed";
-      error = errorMessage;
+      error = err instanceof Error ? err.message : String(err);
 
       // Ensure worker is terminated even if there's an error
       if (worker) {
         try {
           await worker.terminate();
         } catch (terminateError) {
-          console.error("Error terminating worker:", terminateError);
+          if (isDevelopment) {
+            console.error("Error terminating worker:", terminateError);
+          }
         }
       }
     }
 
     const processingTime = Date.now() - startTime;
-    console.log("Total processing time:", processingTime, "ms");
+
+    // Get the S3 URL for the image
+    const command = new GetObjectCommand({
+      Bucket: S3_BUCKET_NAME,
+      Key: imageFile.key || imageFile.originalname,
+    });
+    const imageUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
 
     return this.ocrResultRepository.create({
       userId: new Types.ObjectId(userId),
       originalImage: imageFile.key || imageFile.originalname,
+      imageUrl,
       extractedText,
       status,
       error,
@@ -124,7 +109,9 @@ export class OcrService {
       try {
         await s3Client.send(command);
       } catch (error) {
-        console.error("Error deleting file from S3:", error);
+        if (isDevelopment) {
+          console.error("Error deleting file from S3:", error);
+        }
       }
 
       await this.ocrResultRepository.delete(id);
