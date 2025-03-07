@@ -206,10 +206,13 @@ export class OcrController {
           });
           return;
         }
-        if (error.message === "Invalid result ID") {
+        if (
+          error.message === "Invalid result ID" ||
+          error.message === "Invalid result ID format"
+        ) {
           res.status(HttpStatus.BAD_REQUEST).json({
             success: false,
-            message: "Invalid result ID",
+            message: "Invalid result ID format",
           });
           return;
         }

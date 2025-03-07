@@ -226,7 +226,16 @@ export class OcrService {
   }
 
   async getResultById(id: string): Promise<IOcrResult | null> {
-    return this.ocrResultRepository.findById(id);
+    try {
+      // Validate if the ID is a valid MongoDB ObjectId
+      if (!Types.ObjectId.isValid(id)) {
+        throw new Error("Invalid result ID format");
+      }
+      return this.ocrResultRepository.findById(id);
+    } catch (error) {
+      console.error("Error in getResultById:", error);
+      throw error;
+    }
   }
 
   async deleteResult(id: string): Promise<void> {
@@ -234,6 +243,11 @@ export class OcrService {
 
     if (!id || id === "undefined") {
       throw new Error("Invalid result ID");
+    }
+
+    // Validate if the ID is a valid MongoDB ObjectId
+    if (!Types.ObjectId.isValid(id)) {
+      throw new Error("Invalid result ID format");
     }
 
     const result = await this.getResultById(id);
