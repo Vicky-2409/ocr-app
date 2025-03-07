@@ -46,15 +46,7 @@ api.interceptors.request.use((config) => {
   console.log("Request details:", {
     url: `${config.baseURL}${config.url}`,
     method: config.method,
-    headers: {
-      ...Object.keys(config.headers).reduce((acc, key) => {
-        acc[key] =
-          key.toLowerCase() === "authorization"
-            ? "Bearer [REDACTED]"
-            : config.headers[key];
-        return acc;
-      }, {}),
-    },
+    headers: config.headers,
     data:
       config.data instanceof FormData
         ? `FormData (${Array.from(config.data.entries())
@@ -172,6 +164,7 @@ export const ocrService = {
           maxBodyLength: Infinity,
           maxContentLength: Infinity,
           timeout: 300000, // 5 minutes
+          withCredentials: true,
         }
       );
 
@@ -202,6 +195,20 @@ export const ocrService = {
               url: error.request.url,
               headers: error.request.headers,
               responseURL: error.request.responseURL,
+              status: error.request.status,
+              statusText: error.request.statusText,
+            }
+          : null,
+        config: error.config
+          ? {
+              url: error.config.url,
+              method: error.config.method,
+              headers: error.config.headers,
+              baseURL: error.config.baseURL,
+              data:
+                error.config.data instanceof FormData
+                  ? "FormData"
+                  : error.config.data,
             }
           : null,
       });

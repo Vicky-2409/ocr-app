@@ -22,7 +22,7 @@ app.use((req, res, next) => {
 
 // CORS configuration
 const corsOptions = {
-  origin: true, // Allow all origins during development
+  origin: ["https://ocr-app-frontend.onrender.com", "http://localhost:5173"],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: [
     "Content-Type",
@@ -30,10 +30,6 @@ const corsOptions = {
     "X-Requested-With",
     "Accept",
     "Origin",
-    "Access-Control-Allow-Origin",
-    "Access-Control-Allow-Methods",
-    "Access-Control-Allow-Headers",
-    "Access-Control-Allow-Credentials",
   ],
   exposedHeaders: ["Content-Length", "Content-Type"],
   credentials: true,
@@ -50,29 +46,34 @@ app.options("*", cors(corsOptions));
 
 // Add response headers middleware
 app.use((req, res, next) => {
-  // Set CORS headers
-  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
-  res.header(
-    "Access-Control-Allow-Methods",
-    "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
-  );
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, Accept, Origin"
-  );
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.header("Access-Control-Max-Age", "86400");
+  // Set CORS headers explicitly for each request
+  const origin = req.headers.origin;
+  if (origin && corsOptions.origin.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header(
+      "Access-Control-Allow-Methods",
+      "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
+    );
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, Accept, Origin"
+    );
+    res.header("Access-Control-Max-Age", "86400");
+  }
 
   // Log request details
   console.log("Request Debug:", {
     timestamp: new Date().toISOString(),
-    origin: req.headers.origin,
+    origin: origin,
     method: req.method,
     path: req.path,
+    url: req.url,
     headers: {
       ...req.headers,
       authorization: req.headers.authorization ? "Present" : "Missing",
     },
+    corsEnabled: origin && corsOptions.origin.includes(origin),
   });
 
   // Handle OPTIONS requests
@@ -150,6 +151,7 @@ app.use((req, res) => {
     url: req.url,
     baseUrl: req.baseUrl,
     originalUrl: req.originalUrl,
+    body: req.body,
   });
 
   res.status(404).json({
@@ -179,12 +181,14 @@ app.use(
       method: req.method,
       timestamp: new Date().toISOString(),
       headers: req.headers,
+      body: req.body,
     });
 
+    // Send error response
     res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: Messages.GENERAL.SERVER_ERROR,
-      error: err.message,
+      error: process.env.NODE_ENV === "development" ? err.message : undefined,
     });
   }
 );
