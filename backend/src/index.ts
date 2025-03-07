@@ -11,7 +11,7 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 // Increase server timeout and body size limits
-app.use((_req: Request, res: Response, next: NextFunction) => {
+app.use((_req: Request, res: Response, next: NextFunction): void => {
   res.setTimeout(600000); // 10 minutes
   next();
 });
@@ -41,7 +41,7 @@ app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
 // Add response headers middleware
-app.use((_req: Request, res: Response, next: NextFunction) => {
+app.use((_req: Request, res: Response, next: NextFunction): void => {
   // Set CORS headers explicitly for each request
   res.header(
     "Access-Control-Allow-Origin",
@@ -61,21 +61,21 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   // Log request details
   console.log("Request Debug:", {
     timestamp: new Date().toISOString(),
-    origin: req.headers.origin,
-    method: req.method,
-    path: req.path,
-    url: req.url,
+    origin: _req.headers.origin,
+    method: _req.method,
+    path: _req.path,
+    url: _req.url,
     headers: {
-      ...req.headers,
-      authorization: req.headers.authorization ? "Present" : "Missing",
-      "content-type": req.headers["content-type"],
-      "content-length": req.headers["content-length"],
+      ..._req.headers,
+      authorization: _req.headers.authorization ? "Present" : "Missing",
+      "content-type": _req.headers["content-type"],
+      "content-length": _req.headers["content-length"],
     },
-    body: req.method === "POST" ? "Present" : "N/A",
+    body: _req.method === "POST" ? "Present" : "N/A",
   });
 
   // Handle OPTIONS requests
-  if (req.method === "OPTIONS") {
+  if (_req.method === "OPTIONS") {
     console.log("Handling OPTIONS request");
     return res.status(200).end();
   }
@@ -99,13 +99,13 @@ console.log("Environment:", {
 });
 
 // Request logging middleware
-app.use((_req: Request, _res: Response, next: NextFunction) => {
+app.use((_req: Request, _res: Response, next: NextFunction): void => {
   console.log(`${new Date().toISOString()} - ${_req.method} ${_req.url}`);
   next();
 });
 
 // Root route handler
-app.get("/", (_req: Request, res: Response) => {
+app.get("/", (_req: Request, res: Response): void => {
   res.status(200).json({
     name: "OCR App API",
     version: "1.0.0",
@@ -133,7 +133,7 @@ app.get("/", (_req: Request, res: Response) => {
 });
 
 // Health check endpoint
-app.get("/api/health", (_req: Request, res: Response) => {
+app.get("/api/health", (_req: Request, res: Response): void => {
   res.status(200).json({ status: "ok" });
 });
 
@@ -141,7 +141,7 @@ app.get("/api/health", (_req: Request, res: Response) => {
 app.use("/api", router);
 
 // 404 handler for undefined routes
-app.use((_req: Request, res: Response) => {
+app.use((_req: Request, res: Response): void => {
   res.status(404).json({
     success: false,
     message: `Route ${_req.method} ${_req.path} not found`,
@@ -155,12 +155,14 @@ app.use((_req: Request, res: Response) => {
 });
 
 // Error handling middleware
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  console.error("Error:", err);
-  return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-    error: err.message || "Internal Server Error",
-  });
-});
+app.use(
+  (err: Error, _req: Request, res: Response, _next: NextFunction): void => {
+    console.error("Error:", err);
+    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+      error: err.message || "Internal Server Error",
+    });
+  }
+);
 
 // Connect to MongoDB
 mongoose

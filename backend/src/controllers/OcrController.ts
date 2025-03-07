@@ -1,10 +1,9 @@
-import { Request, Response, NextFunction } from "express";
+import { Response, NextFunction } from "express";
 import { OcrService } from "../services/OcrService";
 import { HttpStatus } from "../types/http";
 import { Messages } from "../constants/messages";
-import { AuthRequest } from "../middleware/auth";
-import { IOcrResult } from "../models/OcrResult";
 import { AuthenticatedRequest } from "../types/auth";
+import { IOcrResult } from "../models/OcrResult";
 
 // Utility function to transform MongoDB document to frontend format
 const transformOcrResult = (result: IOcrResult) => {
@@ -88,7 +87,11 @@ export class OcrController {
     }
   }
 
-  getResultById = async (req: AuthRequest, res: Response): Promise<void> => {
+  async getResultById(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
       const result = await this.ocrService.getResultById(req.params.id);
 
@@ -106,13 +109,7 @@ export class OcrController {
         data: transformOcrResult(result),
       });
     } catch (error) {
-      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : Messages.GENERAL.SERVER_ERROR,
-      });
+      next(error);
     }
-  };
+  }
 }
