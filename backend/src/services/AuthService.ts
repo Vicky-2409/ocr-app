@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
 import { IUser } from "../models/User";
 import { UserRepository } from "../repositories/UserRepository";
 import { Messages } from "../constants/messages";
@@ -9,10 +10,10 @@ export class AuthService {
 
   constructor() {
     this.userRepository = new UserRepository();
-    this.JWT_SECRET = process.env.JWT_SECRET;
-    if (!this.JWT_SECRET) {
-      throw new Error("JWT_SECRET environment variable is not set");
+    if (!process.env.JWT_SECRET) {
+      throw new Error("JWT_SECRET environment variable is required");
     }
+    this.JWT_SECRET = process.env.JWT_SECRET;
     console.log("JWT_SECRET loaded:", this.JWT_SECRET ? "Yes" : "No");
   }
 

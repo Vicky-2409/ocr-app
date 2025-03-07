@@ -7,6 +7,7 @@ import { DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client, S3_BUCKET_NAME } from "../config/aws";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Readable } from "stream";
+import { uploadToS3 } from "../utils/s3";
 
 interface S3File extends Omit<Express.Multer.File, "stream"> {
   key?: string;
@@ -25,9 +26,39 @@ const isDevelopment = process.env.NODE_ENV !== "production";
 
 export class OcrService {
   private ocrResultRepository: OcrResultRepository;
+  private worker: Awaited<ReturnType<typeof createWorker>> | null = null;
 
   constructor() {
     this.ocrResultRepository = new OcrResultRepository();
+  }
+
+  private async initializeWorker(): Promise<void> {
+    try {
+      if (!this.worker) {
+        this.worker = await createWorker();
+        await this.worker.loadLanguage("eng");
+        await this.worker.initialize("eng");
+        console.log("Tesseract worker initialized successfully");
+      }
+    } catch (err) {
+      console.error("Error initializing Tesseract worker:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Unknown error occurred";
+      throw new Error(`Failed to initialize OCR worker: ${errorMessage}`);
+    }
+  }
+
+  private async terminateWorker(): Promise<void> {
+    try {
+      if (this.worker) {
+        await this.worker.terminate();
+        this.worker = null;
+        console.log("Tesseract worker terminated successfully");
+      }
+    } catch (err) {
+      console.error("Error terminating Tesseract worker:", err);
+      // Don't throw here as this is cleanup code
+    }
   }
 
   async processImage(userId: string, imageFile: S3File): Promise<IOcrResult> {
@@ -35,7 +66,6 @@ export class OcrService {
     let extractedText = "";
     let status: "success" | "failed" = "success";
     let error: string | undefined;
-    let worker;
     let retryCount = 0;
     const maxRetries = 3;
 
@@ -61,69 +91,10 @@ export class OcrService {
         throw new Error("No file key found in uploaded file");
       }
 
-      // Create worker with increased timeout for free tier
-      console.log("Creating OCR worker...");
-      retryCount = 0;
-
-      while (retryCount < maxRetries) {
-        try {
-          console.log(`Attempt ${retryCount + 1} to create worker`);
-          worker = await createWorker();
-          console.log("Worker created successfully");
-          break;
-        } catch (err) {
-          retryCount++;
-          console.error(`Worker creation attempt ${retryCount} failed:`, err);
-          if (retryCount === maxRetries) {
-            throw new Error(
-              `Failed to create worker after ${maxRetries} attempts: ${err.message}`
-            );
-          }
-          await new Promise((resolve) =>
-            setTimeout(resolve, 2000 * retryCount)
-          );
-        }
-      }
-
-      // Load language with timeout and retry
-      console.log("Loading English language...");
-      retryCount = 0;
-      while (retryCount < maxRetries) {
-        try {
-          console.log(`Attempt ${retryCount + 1} to load language`);
-          await worker.loadLanguage("eng");
-          console.log("Language loaded successfully");
-          break;
-        } catch (err) {
-          retryCount++;
-          console.error(`Language loading attempt ${retryCount} failed:`, err);
-          if (retryCount === maxRetries) throw err;
-          await new Promise((resolve) =>
-            setTimeout(resolve, 1000 * retryCount)
-          );
-        }
-      }
-
-      // Initialize with timeout and retry
-      console.log("Initializing worker...");
-      retryCount = 0;
-      while (retryCount < maxRetries) {
-        try {
-          console.log(`Attempt ${retryCount + 1} to initialize worker`);
-          await worker.initialize("eng");
-          console.log("Worker initialized successfully");
-          break;
-        } catch (err) {
-          retryCount++;
-          console.error(
-            `Worker initialization attempt ${retryCount} failed:`,
-            err
-          );
-          if (retryCount === maxRetries) throw err;
-          await new Promise((resolve) =>
-            setTimeout(resolve, 1000 * retryCount)
-          );
-        }
+      // Initialize worker if not already initialized
+      await this.initializeWorker();
+      if (!this.worker) {
+        throw new Error("Worker initialization failed");
       }
 
       // Get the image from S3
@@ -149,7 +120,7 @@ export class OcrService {
         // Recognize text with progress tracking and timeout
         console.log("Starting OCR processing...");
         try {
-          const result = await worker.recognize(buffer);
+          const result = await this.worker.recognize(buffer);
           console.log("OCR processing completed");
 
           if (!result?.data?.text) {
@@ -167,11 +138,6 @@ export class OcrService {
         console.error("Error getting image from S3:", err);
         throw err;
       }
-
-      // Terminate worker
-      console.log("Terminating worker...");
-      await worker.terminate();
-      console.log("Worker terminated successfully");
 
       const processingTime = Date.now() - startTime;
       console.log(`Total processing time: ${processingTime}ms`);
@@ -206,9 +172,9 @@ export class OcrService {
       });
 
       // Ensure worker is terminated even if there's an error
-      if (worker) {
+      if (this.worker) {
         try {
-          await worker.terminate();
+          await this.terminateWorker();
         } catch (terminateError) {
           console.error("Error terminating worker:", terminateError);
         }
