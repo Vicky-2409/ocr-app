@@ -77,7 +77,8 @@ app.use((_req: Request, res: Response, next: NextFunction): void => {
   // Handle OPTIONS requests
   if (_req.method === "OPTIONS") {
     console.log("Handling OPTIONS request");
-    return res.status(200).end();
+    res.status(200).end();
+    return;
   }
 
   next();

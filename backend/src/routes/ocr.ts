@@ -14,11 +14,17 @@ router.post(
   "/process",
   upload.single("image"),
   handleUploadError,
-  ocrController.processImage
+  (req, res, next) => ocrController.processImage(req, res, next)
 );
 
-router.get("/results", ocrController.getUserResults);
-router.get("/results/:id", ocrController.getResultById);
-router.delete("/results/:id", ocrController.deleteResult);
+router.get("/results", (req, res, next) =>
+  ocrController.getUserResults(req, res, next)
+);
+router.get("/results/:id", (req, res, next) =>
+  ocrController.getResultById(req, res, next)
+);
+router.delete("/results/:id", (req, res, next) =>
+  ocrController.deleteResult(req, res, next)
+);
 
 export default router;
