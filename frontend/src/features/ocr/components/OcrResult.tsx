@@ -91,11 +91,24 @@ export const OcrResult: React.FC<OcrResultProps> = ({ result, onDelete }) => {
               </div>
             </div>
             <div className="relative aspect-video rounded-lg overflow-hidden bg-secondary-900/5 backdrop-blur-sm shadow-inner">
-              <img
-                src={imageUrl}
-                alt="Original document"
-                className="object-contain w-full h-full"
-              />
+              {imageUrl ? (
+                <img
+                  src={imageUrl}
+                  alt="Original document"
+                  className="object-contain w-full h-full"
+                  onError={(e) => {
+                    console.error("Error loading image:", imageUrl);
+                    e.currentTarget.src = "/placeholder-image.png"; // Add a placeholder image
+                    e.currentTarget.alt = "Image failed to load";
+                  }}
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-secondary-500">
+                    Image not available
+                  </span>
+                </div>
+              )}
               <div className="absolute inset-0 ring-1 ring-inset ring-secondary-900/10 rounded-lg" />
             </div>
           </motion.div>

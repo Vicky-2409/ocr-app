@@ -107,7 +107,7 @@ export class OcrService {
       console.log("Saving OCR result...");
       const result = await this.ocrResultRepository.create({
         userId: new Types.ObjectId(userId),
-        originalImage: imageFile.originalname,
+        originalImage: imageFile.key,
         imageUrl: imageFile.location,
         extractedText,
         status,
@@ -137,7 +137,7 @@ export class OcrService {
       try {
         const result = await this.ocrResultRepository.create({
           userId: new Types.ObjectId(userId),
-          originalImage: imageFile.originalname,
+          originalImage: imageFile.key,
           imageUrl: imageFile.location,
           extractedText: "Error processing image",
           status,
@@ -171,33 +171,41 @@ export class OcrService {
       const resultsWithFreshUrls = await Promise.all(
         results.map(async (result) => {
           try {
-            // Ensure we have a valid result object
+            // Ensure we have a valid result object and S3 key
             if (!result || !result.originalImage) {
               console.error("Invalid result object:", result);
               return null;
             }
 
+            // Generate a signed URL for the image
             const command = new GetObjectCommand({
               Bucket: S3_BUCKET_NAME,
               Key: result.originalImage,
             });
-            const freshImageUrl = await getSignedUrl(s3Client, command, {
-              expiresIn: 3600,
-            });
-            return {
-              ...result,
-              imageUrl: freshImageUrl,
-            };
+
+            try {
+              const freshImageUrl = await getSignedUrl(s3Client, command, {
+                expiresIn: 3600,
+              });
+
+              return {
+                ...result,
+                imageUrl: freshImageUrl,
+              };
+            } catch (signError) {
+              console.error("Error generating signed URL:", signError);
+              // If we can't generate a signed URL, use the stored URL
+              return {
+                ...result,
+                imageUrl: result.imageUrl,
+              };
+            }
           } catch (error) {
             console.error(
-              `Error generating signed URL for image ${result.originalImage}:`,
+              `Error processing result for image ${result.originalImage}:`,
               error
             );
-            // Return the result with the original URL if signing fails
-            return {
-              ...result,
-              imageUrl: result.imageUrl,
-            };
+            return null;
           }
         })
       );
