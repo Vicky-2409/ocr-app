@@ -81,7 +81,6 @@ const storage = multerS3({
   contentType: function (req, file, cb) {
     cb(null, file.mimetype);
   },
-  acl: "public-read",
 });
 
 export const upload = multer({
