@@ -1,9 +1,6 @@
 import multer from "multer";
-import multerS3 from "multer-s3";
 import { Request, Response, NextFunction } from "express";
 import { HttpStatus } from "../types/http";
-import { Messages } from "../constants/messages";
-import { s3Client, S3_BUCKET_NAME } from "../config/aws";
 
 const fileFilter = (
   _req: Request,
@@ -66,24 +63,8 @@ const fileFilter = (
   cb(null, true);
 };
 
-const storage = multerS3({
-  s3: s3Client,
-  bucket: S3_BUCKET_NAME,
-  metadata: function (req, file, cb) {
-    cb(null, { fieldName: file.fieldname });
-  },
-  key: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const key = uniqueSuffix + "-" + file.originalname;
-    console.log("Generated S3 key:", key);
-    cb(null, key);
-  },
-  contentType: function (req, file, cb) {
-    cb(null, file.mimetype);
-  },
-});
-
-export const upload = multer({
+// Configure multer for memory storage
+const upload = multer({
   storage: multer.memoryStorage(),
   fileFilter,
   limits: {
@@ -91,11 +72,12 @@ export const upload = multer({
   },
 });
 
-export const handleUploadError = (
+// Handle multer errors
+const handleUploadError = (
   err: any,
-  req: Request,
+  _req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) => {
   console.error("File upload error:", {
     message: err.message,
@@ -129,3 +111,5 @@ export const handleUploadError = (
     message: "Error uploading file. Please try again.",
   });
 };
+
+export { upload, handleUploadError };

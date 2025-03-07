@@ -2,19 +2,16 @@ import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
-import path from "path";
-import { router } from "./routes";
+import { router } from "./routes/index";
 import { HttpStatus } from "./types/http";
-import { Messages } from "./constants/messages";
 
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 5000;
-const isDevelopment = process.env.NODE_ENV !== "production";
 
 // Increase server timeout and body size limits
-app.use((req, res, next) => {
+app.use((_req: Request, res: Response, next: NextFunction) => {
   res.setTimeout(600000); // 10 minutes
   next();
 });
@@ -44,7 +41,7 @@ app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
 // Add response headers middleware
-app.use((req, res, next) => {
+app.use((_req: Request, res: Response, next: NextFunction) => {
   // Set CORS headers explicitly for each request
   res.header(
     "Access-Control-Allow-Origin",
@@ -102,13 +99,13 @@ console.log("Environment:", {
 });
 
 // Request logging middleware
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+app.use((_req: Request, _res: Response, next: NextFunction) => {
+  console.log(`${new Date().toISOString()} - ${_req.method} ${_req.url}`);
   next();
 });
 
 // Root route handler
-app.get("/", (req, res) => {
+app.get("/", (_req: Request, res: Response) => {
   res.status(200).json({
     name: "OCR App API",
     version: "1.0.0",
@@ -136,7 +133,7 @@ app.get("/", (req, res) => {
 });
 
 // Health check endpoint
-app.get("/api/health", (req, res) => {
+app.get("/api/health", (_req: Request, res: Response) => {
   res.status(200).json({ status: "ok" });
 });
 
@@ -144,24 +141,10 @@ app.get("/api/health", (req, res) => {
 app.use("/api", router);
 
 // 404 handler for undefined routes
-app.use((req, res) => {
-  console.log("404 Error:", {
-    method: req.method,
-    path: req.path,
-    url: req.url,
-    baseUrl: req.baseUrl,
-    originalUrl: req.originalUrl,
-    headers: {
-      ...req.headers,
-      authorization: req.headers.authorization ? "Present" : "Missing",
-      "content-type": req.headers["content-type"],
-      "content-length": req.headers["content-length"],
-    },
-  });
-
+app.use((_req: Request, res: Response) => {
   res.status(404).json({
     success: false,
-    message: `Route ${req.method} ${req.path} not found`,
+    message: `Route ${_req.method} ${_req.path} not found`,
     availableEndpoints: {
       auth: "/api/auth/*",
       ocr: "/api/ocr/*",
