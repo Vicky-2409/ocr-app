@@ -27,10 +27,13 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  // Remove Content-Type for multipart/form-data requests
-  if (config.headers["Content-Type"] === "multipart/form-data") {
+
+  // Handle FormData requests
+  if (config.data instanceof FormData) {
+    // Let the browser set the Content-Type with boundary
     delete config.headers["Content-Type"];
   }
+
   return config;
 });
 
@@ -91,9 +94,15 @@ export const ocrService = {
     formData.append("image", file);
     const token = localStorage.getItem("token");
     console.log("Token from localStorage:", token);
+    console.log("File details:", {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+    });
 
     const headers = {
       ...(token && { Authorization: `Bearer ${token}` }),
+      "Content-Type": "multipart/form-data",
     };
     console.log("Request headers:", headers);
 

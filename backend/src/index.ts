@@ -41,7 +41,14 @@ const corsOptions = {
     "https://ocr-app-frontend.onrender.com", // Production frontend
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "Content-Length",
+    "X-Requested-With",
+    "Accept",
+  ],
+  exposedHeaders: ["Content-Length", "Content-Type"],
   credentials: true,
 };
 
