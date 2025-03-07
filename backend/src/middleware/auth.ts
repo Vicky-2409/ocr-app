@@ -1,4 +1,4 @@
-import { Response, NextFunction } from "express";
+import { Request, Response, NextFunction, RequestHandler } from "express";
 import { AuthService } from "../services/AuthService";
 import { HttpStatus } from "../types/http";
 import { Messages } from "../constants/messages";
@@ -6,8 +6,8 @@ import { AuthenticatedRequest } from "../types/auth";
 
 const authService = new AuthService();
 
-export const authenticate = async (
-  req: any,
+export const authenticate: RequestHandler = async (
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {

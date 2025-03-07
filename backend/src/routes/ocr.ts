@@ -1,4 +1,4 @@
-import { Router, Response, NextFunction } from "express";
+import { Router, RequestHandler } from "express";
 import { OcrController } from "../controllers/OcrController";
 import { authenticate } from "../middleware/auth";
 import { upload, handleUploadError } from "../middleware/upload";
@@ -11,30 +11,56 @@ const ocrController = new OcrController();
 router.use(authenticate);
 
 // File upload route
-router.post(
-  "/process",
-  upload.single("image"),
-  handleUploadError,
-  (req: AuthenticatedRequest, res: Response, next: NextFunction) =>
-    ocrController.processImage(req, res, next)
-);
+router.post("/process", upload.single("image"), handleUploadError, (async (
+  req,
+  res,
+  next
+) => {
+  try {
+    return await ocrController.processImage(
+      req as AuthenticatedRequest,
+      res,
+      next
+    );
+  } catch (error) {
+    next(error);
+  }
+}) as RequestHandler);
 
-router.get(
-  "/results",
-  (req: AuthenticatedRequest, res: Response, next: NextFunction) =>
-    ocrController.getUserResults(req, res, next)
-);
+router.get("/results", (async (req, res, next) => {
+  try {
+    return await ocrController.getUserResults(
+      req as AuthenticatedRequest,
+      res,
+      next
+    );
+  } catch (error) {
+    next(error);
+  }
+}) as RequestHandler);
 
-router.get(
-  "/results/:id",
-  (req: AuthenticatedRequest, res: Response, next: NextFunction) =>
-    ocrController.getResultById(req, res, next)
-);
+router.get("/results/:id", (async (req, res, next) => {
+  try {
+    return await ocrController.getResultById(
+      req as AuthenticatedRequest,
+      res,
+      next
+    );
+  } catch (error) {
+    next(error);
+  }
+}) as RequestHandler);
 
-router.delete(
-  "/results/:id",
-  (req: AuthenticatedRequest, res: Response, next: NextFunction) =>
-    ocrController.deleteResult(req, res, next)
-);
+router.delete("/results/:id", (async (req, res, next) => {
+  try {
+    return await ocrController.deleteResult(
+      req as AuthenticatedRequest,
+      res,
+      next
+    );
+  } catch (error) {
+    next(error);
+  }
+}) as RequestHandler);
 
 export default router;
