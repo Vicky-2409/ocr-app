@@ -6,12 +6,13 @@ import { Types } from "mongoose";
 import { DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client, S3_BUCKET_NAME } from "../config/aws";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { Readable } from 'stream';
 
-interface S3File extends Express.Multer.File {
+interface S3File extends Omit<Express.Multer.File, 'stream'> {
   key?: string;
   location?: string;
   bucket?: string;
-  stream: NodeJS.ReadableStream;
+  stream: Readable;
   buffer: Buffer;
   mimetype: string;
   size: number;
