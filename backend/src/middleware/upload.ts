@@ -1,6 +1,9 @@
 import multer from "multer";
 import { Request, Response, NextFunction } from "express";
 import { HttpStatus } from "../types/http";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { s3Client, S3_BUCKET_NAME } from "../config/aws";
+import { v4 as uuidv4 } from "uuid";
 
 const fileFilter = (
   _req: Request,
@@ -72,6 +75,62 @@ const upload = multer({
   },
 });
 
+// Upload file to S3
+const uploadToS3 = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.file) {
+      res.status(HttpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "No file uploaded",
+      });
+      return;
+    }
+
+    const file = req.file;
+    const key = `${uuidv4()}-${file.originalname.replace(/\s+/g, "-")}`;
+
+    console.log("Uploading to S3:", {
+      bucket: S3_BUCKET_NAME,
+      key,
+      contentType: file.mimetype,
+      size: file.size,
+    });
+
+    const command = new PutObjectCommand({
+      Bucket: S3_BUCKET_NAME,
+      Key: key,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+    });
+
+    await s3Client.send(command);
+
+    // Add S3 info to the file object
+    (req.file as any).key = key;
+    (req.file as any).bucket = S3_BUCKET_NAME;
+    (
+      req.file as any
+    ).location = `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+
+    console.log("Successfully uploaded to S3:", {
+      key,
+      location: (req.file as any).location,
+    });
+
+    next();
+  } catch (error) {
+    console.error("Error uploading to S3:", error);
+    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Failed to upload file to storage",
+    });
+  }
+};
+
 // Handle multer errors
 const handleUploadError = (
   err: any,
@@ -112,4 +171,4 @@ const handleUploadError = (
   });
 };
 
-export { upload, handleUploadError };
+export { upload, uploadToS3, handleUploadError };

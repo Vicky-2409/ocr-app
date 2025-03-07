@@ -71,20 +71,10 @@ export class OcrService {
         mimetype: imageFile.mimetype,
         size: imageFile.size,
         key: imageFile.key,
+        location: imageFile.location,
         fieldname: imageFile.fieldname,
         encoding: imageFile.encoding,
-        stream: imageFile.stream ? "Present" : "Missing",
       });
-
-      // Verify AWS configuration
-      console.log("Verifying AWS configuration...");
-      console.log("S3 Bucket:", S3_BUCKET_NAME);
-      console.log("AWS Region:", process.env.AWS_REGION);
-
-      if (!imageFile.key) {
-        console.error("No file key found in uploaded file");
-        throw new Error("No file key found in uploaded file");
-      }
 
       // Initialize worker if not already initialized
       await this.initializeWorker();
@@ -92,45 +82,21 @@ export class OcrService {
         throw new Error("Worker initialization failed");
       }
 
-      // Get the image from S3
-      console.log("Getting image from S3...");
-      const command = new GetObjectCommand({
-        Bucket: S3_BUCKET_NAME,
-        Key: imageFile.key,
-      });
-
+      // Process the image buffer directly since we already have it
+      console.log("Starting OCR processing...");
       try {
-        const { Body } = await s3Client.send(command);
-        if (!Body) {
-          throw new Error("No image data received from S3");
+        const result = await this.worker.recognize(imageFile.buffer);
+        console.log("OCR processing completed");
+
+        if (!result?.data?.text) {
+          throw new Error("No text extracted from image");
         }
 
-        // Convert stream to buffer
-        const chunks: Uint8Array[] = [];
-        for await (const chunk of Body as any) {
-          chunks.push(chunk);
-        }
-        const buffer = Buffer.concat(chunks);
-
-        // Recognize text with progress tracking and timeout
-        console.log("Starting OCR processing...");
-        try {
-          const result = await this.worker.recognize(buffer);
-          console.log("OCR processing completed");
-
-          if (!result?.data?.text) {
-            throw new Error("No text extracted from image");
-          }
-
-          extractedText = result.data.text;
-          console.log("OCR processing completed successfully");
-          console.log("Extracted text length:", extractedText.length);
-        } catch (err) {
-          console.error("Error during OCR recognition:", err);
-          throw err;
-        }
+        extractedText = result.data.text;
+        console.log("OCR processing completed successfully");
+        console.log("Extracted text length:", extractedText.length);
       } catch (err) {
-        console.error("Error getting image from S3:", err);
+        console.error("Error during OCR recognition:", err);
         throw err;
       }
 
@@ -141,8 +107,8 @@ export class OcrService {
       console.log("Saving OCR result...");
       const result = await this.ocrResultRepository.create({
         userId: new Types.ObjectId(userId),
-        originalImage: imageFile.key,
-        imageUrl: `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${imageFile.key}`,
+        originalImage: imageFile.originalname,
+        imageUrl: imageFile.location,
         extractedText,
         status,
         processingTime,
@@ -163,6 +129,7 @@ export class OcrService {
           mimetype: imageFile.mimetype,
           size: imageFile.size,
           key: imageFile.key,
+          location: imageFile.location,
         },
       });
 
@@ -170,8 +137,8 @@ export class OcrService {
       try {
         const result = await this.ocrResultRepository.create({
           userId: new Types.ObjectId(userId),
-          originalImage: imageFile.key || imageFile.originalname,
-          imageUrl: `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${imageFile.key}`,
+          originalImage: imageFile.originalname,
+          imageUrl: imageFile.location,
           extractedText: "Error processing image",
           status,
           error,
