@@ -19,6 +19,7 @@ const api = axios.create({
   timeout: 300000, // 5 minutes default timeout
   maxContentLength: Infinity,
   maxBodyLength: Infinity,
+  withCredentials: true, // Enable sending cookies and auth headers
 });
 
 // Add token to requests if it exists
@@ -100,18 +101,11 @@ export const ocrService = {
       size: file.size,
     });
 
-    const headers = {
-      ...(token && { Authorization: `Bearer ${token}` }),
-      "Content-Type": "multipart/form-data",
-    };
-    console.log("Request headers:", headers);
-
     try {
       const response = await api.post<ApiResponse<OcrResult>>(
         "/ocr/process",
         formData,
         {
-          headers,
           timeout: 300000, // 5 minutes timeout
           onUploadProgress: (progressEvent) => {
             const percentCompleted = Math.round(
