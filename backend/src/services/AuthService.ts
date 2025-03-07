@@ -1,5 +1,4 @@
 import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
 import { IUser } from "../models/User";
 import { UserRepository } from "../repositories/UserRepository";
 import { Messages } from "../constants/messages";
