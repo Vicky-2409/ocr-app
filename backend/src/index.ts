@@ -53,6 +53,34 @@ app.use((req, res, next) => {
   next();
 });
 
+// Root route handler
+app.get("/", (req, res) => {
+  res.status(200).json({
+    name: "OCR App API",
+    version: "1.0.0",
+    status: "running",
+    endpoints: {
+      auth: {
+        base: "/api/auth",
+        routes: {
+          login: "POST /api/auth/login",
+          register: "POST /api/auth/register",
+          logout: "POST /api/auth/logout",
+        },
+      },
+      ocr: {
+        base: "/api/ocr",
+        routes: {
+          process: "POST /api/ocr/process",
+          results: "GET /api/ocr/results",
+          resultById: "GET /api/ocr/results/:id",
+          deleteResult: "DELETE /api/ocr/results/:id",
+        },
+      },
+    },
+  });
+});
+
 // Health check endpoint
 app.get("/api/health", (req, res) => {
   res.status(200).json({ status: "ok" });
@@ -61,6 +89,20 @@ app.get("/api/health", (req, res) => {
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/ocr", ocrRoutes);
+
+// 404 handler for undefined routes
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route ${req.method} ${req.path} not found`,
+    availableEndpoints: {
+      auth: "/api/auth/*",
+      ocr: "/api/ocr/*",
+      health: "/api/health",
+      docs: "/",
+    },
+  });
+});
 
 // Error handling middleware
 app.use(
