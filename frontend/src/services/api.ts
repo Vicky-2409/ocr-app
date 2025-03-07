@@ -37,6 +37,7 @@ api.interceptors.request.use((config) => {
     delete config.headers["Access-Control-Allow-Origin"];
     delete config.headers["Access-Control-Allow-Headers"];
     delete config.headers["Access-Control-Allow-Methods"];
+    delete config.headers["Access-Control-Allow-Credentials"];
 
     config.headers["Accept"] = "application/json";
   }
@@ -151,6 +152,7 @@ export const ocrService = {
           size: `${(file.size / 1024).toFixed(2)}KB`,
         },
         token: token ? "Present" : "Missing",
+        url: `${API_URL}/api/ocr/process`,
       });
 
       const response = await api.post<ApiResponse<OcrResult>>(
@@ -167,11 +169,15 @@ export const ocrService = {
             );
             console.log(`Upload progress: ${percentCompleted}%`);
           },
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+          timeout: 300000, // 5 minutes
         }
       );
 
       console.log("OCR Response:", {
         status: response.status,
+        statusText: response.statusText,
         headers: response.headers,
         data: response.data,
       });
@@ -185,6 +191,7 @@ export const ocrService = {
         response: error.response
           ? {
               status: error.response.status,
+              statusText: error.response.statusText,
               data: error.response.data,
               headers: error.response.headers,
             }
@@ -194,6 +201,7 @@ export const ocrService = {
               method: error.request.method,
               url: error.request.url,
               headers: error.request.headers,
+              responseURL: error.request.responseURL,
             }
           : null,
       });

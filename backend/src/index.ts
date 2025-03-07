@@ -22,7 +22,7 @@ app.use((req, res, next) => {
 
 // CORS configuration
 const corsOptions = {
-  origin: "https://ocr-app-frontend.onrender.com",
+  origin: true, // Allow all origins during development
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: [
     "Content-Type",
@@ -47,6 +47,41 @@ app.use(cors(corsOptions));
 
 // Handle preflight requests
 app.options("*", cors(corsOptions));
+
+// Add response headers middleware
+app.use((req, res, next) => {
+  // Set CORS headers
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
+  );
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, Accept, Origin"
+  );
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Max-Age", "86400");
+
+  // Log request details
+  console.log("Request Debug:", {
+    timestamp: new Date().toISOString(),
+    origin: req.headers.origin,
+    method: req.method,
+    path: req.path,
+    headers: {
+      ...req.headers,
+      authorization: req.headers.authorization ? "Present" : "Missing",
+    },
+  });
+
+  // Handle OPTIONS requests
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  next();
+});
 
 // Parse JSON and URL-encoded bodies after CORS
 app.use(express.json({ limit: "50mb" }));
@@ -112,6 +147,9 @@ app.use((req, res) => {
     method: req.method,
     path: req.path,
     headers: req.headers,
+    url: req.url,
+    baseUrl: req.baseUrl,
+    originalUrl: req.originalUrl,
   });
 
   res.status(404).json({
@@ -140,11 +178,13 @@ app.use(
       path: req.path,
       method: req.method,
       timestamp: new Date().toISOString(),
+      headers: req.headers,
     });
 
     res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: Messages.GENERAL.SERVER_ERROR,
+      error: err.message,
     });
   }
 );
