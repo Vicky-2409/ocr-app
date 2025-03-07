@@ -1,17 +1,16 @@
-import dotenv from "dotenv";
-dotenv.config();
-
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
+import dotenv from "dotenv";
 import mongoose from "mongoose";
 import path from "path";
-import authRoutes from "./routes/auth";
-import ocrRoutes from "./routes/ocr";
+import { router } from "./routes";
 import { HttpStatus } from "./types/http";
 import { Messages } from "./constants/messages";
 
+dotenv.config();
+
 const app = express();
-const PORT = process.env.PORT || 5000;
+const port = process.env.PORT || 5000;
 const isDevelopment = process.env.NODE_ENV !== "production";
 
 // Increase server timeout and body size limits
@@ -142,8 +141,7 @@ app.get("/api/health", (req, res) => {
 });
 
 // Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/ocr", ocrRoutes);
+app.use("/api", router);
 
 // 404 handler for undefined routes
 app.use((req, res) => {
@@ -174,43 +172,20 @@ app.use((req, res) => {
 });
 
 // Error handling middleware
-app.use(
-  (
-    err: Error,
-    req: express.Request,
-    res: express.Response,
-    next: express.NextFunction
-  ) => {
-    console.error("Error:", {
-      message: err.message,
-      stack: err.stack,
-      path: req.path,
-      method: req.method,
-      timestamp: new Date().toISOString(),
-      headers: {
-        ...req.headers,
-        authorization: req.headers.authorization ? "Present" : "Missing",
-        "content-type": req.headers["content-type"],
-        "content-length": req.headers["content-length"],
-      },
-    });
-
-    // Send error response
-    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: Messages.GENERAL.SERVER_ERROR,
-      error: process.env.NODE_ENV === "development" ? err.message : undefined,
-    });
-  }
-);
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error("Error:", err);
+  return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+    error: err.message || "Internal Server Error",
+  });
+});
 
 // Connect to MongoDB
 mongoose
   .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/ocr-app")
   .then(() => {
     console.log("Connected to MongoDB");
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+    app.listen(port, () => {
+      console.log(`Server is running on port ${port}`);
       console.log(`Environment: ${process.env.NODE_ENV}`);
     });
   })

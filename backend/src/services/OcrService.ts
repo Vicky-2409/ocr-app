@@ -1,13 +1,11 @@
 import { createWorker, Worker } from "tesseract.js";
 import { IOcrResult } from "../models/OcrResult";
 import { OcrResultRepository } from "../repositories/OcrResultRepository";
-import { Messages } from "../constants/messages";
 import { Types } from "mongoose";
 import { DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client, S3_BUCKET_NAME } from "../config/aws";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Readable } from "stream";
-import { uploadToS3 } from "../utils/s3";
 
 interface S3File extends Omit<Express.Multer.File, "stream"> {
   key?: string;
