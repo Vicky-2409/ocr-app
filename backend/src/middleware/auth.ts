@@ -1,19 +1,13 @@
-import { Request, Response, NextFunction } from "express";
+import { Response, NextFunction } from "express";
 import { AuthService } from "../services/AuthService";
 import { HttpStatus } from "../types/http";
 import { Messages } from "../constants/messages";
+import { AuthenticatedRequest } from "../types/auth";
 
 const authService = new AuthService();
 
-export interface AuthRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-  };
-}
-
 export const authenticate = async (
-  req: AuthRequest,
+  req: any,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
@@ -42,7 +36,7 @@ export const authenticate = async (
         throw new Error("Invalid token payload");
       }
 
-      req.user = {
+      (req as AuthenticatedRequest).user = {
         id: decoded.id,
         email: decoded.email,
       };
