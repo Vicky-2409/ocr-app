@@ -33,9 +33,13 @@ api.interceptors.request.use((config) => {
   if (config.data instanceof FormData) {
     // Remove Content-Type to let browser set it with boundary
     delete config.headers["Content-Type"];
-    // Remove problematic headers
+    // Remove any CORS headers as they should be set by the server
     delete config.headers["Access-Control-Allow-Origin"];
+    delete config.headers["Access-Control-Allow-Headers"];
+    delete config.headers["Access-Control-Allow-Methods"];
+
     config.headers["Accept"] = "application/json";
+    config.headers["Origin"] = window.location.origin;
   }
 
   // Log request details for debugging
@@ -157,6 +161,7 @@ export const ocrService = {
           headers: {
             Accept: "application/json",
             Authorization: `Bearer ${token}`,
+            Origin: window.location.origin,
           },
           onUploadProgress: (progressEvent) => {
             const percentCompleted = Math.round(
@@ -169,14 +174,23 @@ export const ocrService = {
       return response.data;
     } catch (error) {
       console.error("Error processing image:", error);
-      console.error("Request details:", {
-        url: API_URL + "/api/ocr/process",
-        token: token ? "Present" : "Missing",
-        fileDetails: {
-          name: file.name,
-          type: file.type,
-          size: file.size,
-        },
+      console.error("Full error details:", {
+        message: error.message,
+        code: error.code,
+        response: error.response
+          ? {
+              status: error.response.status,
+              data: error.response.data,
+              headers: error.response.headers,
+            }
+          : null,
+        request: error.request
+          ? {
+              method: error.request.method,
+              url: error.request.url,
+              headers: error.request.headers,
+            }
+          : null,
       });
 
       // Handle specific error cases

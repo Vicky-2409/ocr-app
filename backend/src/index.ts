@@ -37,25 +37,7 @@ console.log("Environment:", {
 
 // CORS configuration
 const corsOptions = {
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-
-    const allowedOrigins = [
-      "https://ocr-app-frontend.onrender.com",
-      process.env.CORS_ORIGIN,
-    ].filter(Boolean);
-
-    if (
-      allowedOrigins.indexOf(origin) !== -1 ||
-      process.env.NODE_ENV !== "production"
-    ) {
-      callback(null, true);
-    } else {
-      console.warn(`Origin ${origin} not allowed by CORS`);
-      callback(null, false);
-    }
-  },
+  origin: "https://ocr-app-frontend.onrender.com", // Set explicit origin
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: [
     "Content-Type",
@@ -63,9 +45,6 @@ const corsOptions = {
     "X-Requested-With",
     "Accept",
     "Origin",
-    "Access-Control-Allow-Origin",
-    "Access-Control-Allow-Headers",
-    "Access-Control-Allow-Methods",
   ],
   exposedHeaders: ["Content-Length", "Content-Type"],
   credentials: true,
@@ -74,40 +53,48 @@ const corsOptions = {
   preflightContinue: false,
 };
 
+// Apply CORS middleware before other middleware
 app.use(cors(corsOptions));
 
-// Add OPTIONS handler for preflight requests
-app.options("*", cors(corsOptions));
+// Handle preflight requests
+app.options("*", (req, res) => {
+  res.header(
+    "Access-Control-Allow-Origin",
+    "https://ocr-app-frontend.onrender.com"
+  );
+  res.header("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, Accept, Origin"
+  );
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.status(200).send();
+});
 
 // Add CORS debug logging with more details
 app.use((req, res, next) => {
-  const requestOrigin = req.headers.origin;
-  console.log("CORS Debug:", {
-    origin: requestOrigin,
+  console.log("Request Debug:", {
+    origin: req.headers.origin,
     method: req.method,
     path: req.path,
-    allowedOrigins: [
-      "https://ocr-app-frontend.onrender.com",
-      process.env.CORS_ORIGIN,
-    ].filter(Boolean),
     headers: {
       ...req.headers,
       authorization: req.headers.authorization ? "Present" : "Missing",
     },
-    corsEnabled:
-      process.env.NODE_ENV !== "production" ||
-      [
-        "https://ocr-app-frontend.onrender.com",
-        process.env.CORS_ORIGIN,
-      ].includes(requestOrigin || ""),
   });
-  next();
-});
 
-// Add response headers middleware
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  // Add CORS headers to all responses
+  res.header(
+    "Access-Control-Allow-Origin",
+    "https://ocr-app-frontend.onrender.com"
+  );
   res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, Accept, Origin"
+  );
+
   next();
 });
 
