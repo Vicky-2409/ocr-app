@@ -16,8 +16,8 @@ interface S3File extends Express.Multer.File {
   encoding: string;
   fieldname: string;
   originalname: string;
-  buffer: Buffer;
-  stream?: NodeJS.ReadableStream;
+  buffer?: Buffer;
+  stream?: any; // Use any type to avoid TypeScript errors with stream types
 }
 
 const isDevelopment = process.env.NODE_ENV !== "production";

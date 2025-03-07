@@ -31,5 +31,6 @@ declare module "multer-s3" {
   }
 
   function multerS3(options: S3StorageOptions): any;
+
   export = multerS3;
 }
