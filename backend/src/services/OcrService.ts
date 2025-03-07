@@ -48,6 +48,11 @@ export class OcrService {
         encoding: imageFile.encoding,
       });
 
+      // Verify AWS configuration
+      console.log("Verifying AWS configuration...");
+      console.log("S3 Bucket:", S3_BUCKET_NAME);
+      console.log("AWS Region:", process.env.AWS_REGION);
+
       if (!imageFile.key) {
         console.error("No file key found in uploaded file");
         throw new Error("No file key found in uploaded file");
@@ -58,21 +63,25 @@ export class OcrService {
         throw new Error("No file buffer found in uploaded file");
       }
 
-      // Create worker with timeout and retry
+      // Create worker with increased timeout for free tier
       console.log("Creating OCR worker...");
       retryCount = 0;
 
       while (retryCount < maxRetries) {
         try {
           console.log(`Attempt ${retryCount + 1} to create worker`);
-          const workerPromise = createWorker();
+          const workerPromise = createWorker({
+            logger: (progress) => {
+              console.log("Worker progress:", progress);
+            },
+          });
 
           worker = await Promise.race([
             workerPromise,
             new Promise((_, reject) =>
               setTimeout(
                 () => reject(new Error("Worker creation timeout")),
-                60000
+                120000 // Increased to 2 minutes for free tier
               )
             ),
           ]);
@@ -81,9 +90,13 @@ export class OcrService {
         } catch (err) {
           retryCount++;
           console.error(`Worker creation attempt ${retryCount} failed:`, err);
-          if (retryCount === maxRetries) throw err;
-          await new Promise((resolve) =>
-            setTimeout(resolve, 1000 * retryCount)
+          if (retryCount === maxRetries) {
+            throw new Error(
+              `Failed to create worker after ${maxRetries} attempts: ${err.message}`
+            );
+          }
+          await new Promise(
+            (resolve) => setTimeout(resolve, 2000 * retryCount) // Increased delay between retries
           );
         }
       }

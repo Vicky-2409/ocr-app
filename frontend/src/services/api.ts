@@ -117,17 +117,48 @@ export const ocrService = {
       return response.data;
     } catch (error) {
       console.error("Error processing image:", error);
+
+      // Handle specific error cases
       if (error.code === "ECONNABORTED") {
         throw new Error(
-          "Request timed out. Please try again with a smaller image."
+          "Request timed out. The server might be busy processing other requests. Please try again in a few moments."
         );
       }
+
       if (error.response?.status === 502) {
         throw new Error(
-          "Server is temporarily unavailable. Please try again in a few moments."
+          "Server is temporarily unavailable. This might happen when the service is waking up. Please try again in a few moments."
         );
       }
-      throw error;
+
+      if (error.response?.status === 400) {
+        const errorMessage =
+          error.response.data?.message ||
+          "Invalid request. Please check your image and try again.";
+        throw new Error(errorMessage);
+      }
+
+      if (error.response?.status === 413) {
+        throw new Error(
+          "Image file is too large. Please try with a smaller image (maximum 5MB)."
+        );
+      }
+
+      if (error.response?.status >= 500) {
+        throw new Error(
+          "Server error. This might be due to high load or the service starting up. Please try again in a few moments."
+        );
+      }
+
+      // If we have a specific error message from the server, use it
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+
+      // Generic error
+      throw new Error(
+        "Failed to process image. Please try again or contact support if the problem persists."
+      );
     }
   },
 
