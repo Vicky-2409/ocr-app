@@ -36,11 +36,12 @@ export const authenticate: RequestHandler = async (
         throw new Error("Invalid token payload");
       }
 
-      (req as AuthenticatedRequest).user = {
+      const authenticatedReq = req as AuthenticatedRequest;
+      authenticatedReq.user = {
         id: decoded.id,
         email: decoded.email,
       };
-      console.log("Set user in request:", req.user); // Debug log
+      console.log("Set user in request:", authenticatedReq.user); // Debug log
       next();
     } catch (tokenError) {
       console.error("Token verification error:", tokenError); // Debug log
