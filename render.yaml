@@ -37,7 +37,7 @@ services:
     staticPublishPath: frontend/dist
     envVars:
       - key: VITE_API_URL
-        value: https://ocr-app-backend-y3i5.onrender.com/api
+        value: https://ocr-app-backend-y3i5.onrender.com
     autoDeploy: true
     routes:
       - type: rewrite
