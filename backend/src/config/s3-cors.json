@@ -3,7 +3,11 @@
     {
       "AllowedHeaders": ["*"],
       "AllowedMethods": ["GET", "PUT", "POST", "DELETE"],
-      "AllowedOrigins": ["http://localhost:3000"],
+      "AllowedOrigins": [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://ocr-app-frontend.onrender.com"
+      ],
       "ExposeHeaders": [],
       "MaxAgeSeconds": 3000
     }

@@ -36,11 +36,13 @@ console.log("Environment:", {
 
 // CORS configuration
 const corsOptions = {
-  origin: function(origin: any, callback: any) {
+  origin: function (origin: any, callback: any) {
     const allowedOrigins = [
       "http://localhost:5173",
-      "https://ocr-app-frontend.onrender.com"
-    ];
+      "http://localhost:3000",
+      process.env.CORS_ORIGIN,
+    ].filter(Boolean);
+
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
@@ -61,7 +63,7 @@ const corsOptions = {
   credentials: true,
   maxAge: 86400, // 24 hours
   preflightContinue: false,
-  optionsSuccessStatus: 204
+  optionsSuccessStatus: 204,
 };
 
 // Enable CORS for all routes
@@ -70,10 +72,19 @@ app.use(cors(corsOptions));
 // Add CORS headers manually for additional safety
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (origin === "https://ocr-app-frontend.onrender.com" || origin === "http://localhost:5173") {
+  const allowedOrigins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    process.env.CORS_ORIGIN,
+  ].filter(Boolean);
+
+  if (origin && allowedOrigins.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
   }
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS"
+  );
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Access-Control-Allow-Credentials", "true");
   if (req.method === "OPTIONS") {
@@ -88,36 +99,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check endpoint with more details
+// Health check endpoint
 app.get("/api/health", (req, res) => {
-  const healthCheck = {
-    status: "healthy",
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
-    uptime: process.uptime(),
-    mongodb:
-      mongoose.connection.readyState === 1 ? "connected" : "disconnected",
-  };
-
-  console.log("Health check:", healthCheck);
-  res.status(HttpStatus.OK).json(healthCheck);
+  res.status(200).json({ status: "ok" });
 });
 
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/ocr", ocrRoutes);
-
-// Serve frontend static files in production
-if (process.env.NODE_ENV === "production") {
-  console.log("Serving static files from frontend/dist");
-  // Serve static files from frontend build directory
-  app.use(express.static(path.join(__dirname, "../../frontend/dist")));
-
-  // Handle React routing, return all requests to React app
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../../frontend/dist/index.html"));
-  });
-}
 
 // Error handling middleware
 app.use(

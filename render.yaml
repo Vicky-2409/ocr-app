@@ -2,8 +2,7 @@ services:
   - type: web
     name: ocr-app-backend
     env: node
-    buildCommand: |
-      cd frontend && npm install && npm run build && cd ../backend && npm install && npm run build
+    buildCommand: cd backend && npm install && npm run build
     startCommand: cd backend && npm start
     envVars:
       - key: NODE_ENV
@@ -26,6 +25,8 @@ services:
         sync: false
       - key: S3_BUCKET_NAME
         sync: false
+      - key: CORS_ORIGIN
+        value: https://ocr-app-frontend.onrender.com
     healthCheckPath: /api/health
     autoDeploy: true
 
@@ -38,3 +39,7 @@ services:
       - key: VITE_API_URL
         value: https://ocr-app-backend-y3i5.onrender.com/api
     autoDeploy: true
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
