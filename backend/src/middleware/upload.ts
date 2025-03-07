@@ -56,12 +56,10 @@ const fileFilter = (
 const storage = multerS3({
   s3: s3Client,
   bucket: S3_BUCKET_NAME,
-  contentType: multerS3.AUTO_CONTENT_TYPE,
-  key: (
-    req: Request,
-    file: Express.Multer.File,
-    cb: (error: any, key?: string) => void
-  ) => {
+  metadata: function (req, file, cb) {
+    cb(null, { fieldName: file.fieldname });
+  },
+  key: function (req, file, cb) {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     const key = uniqueSuffix + "-" + file.originalname;
     console.log("Generated S3 key:", key);
