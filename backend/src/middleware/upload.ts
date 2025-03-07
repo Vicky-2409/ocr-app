@@ -14,6 +14,8 @@ const fileFilter = (
     originalname: file.originalname,
     mimetype: file.mimetype,
     size: file.size,
+    buffer: file.buffer ? "Buffer present" : "No buffer",
+    fieldname: file.fieldname,
   });
 
   const allowedTypes = process.env.ALLOWED_FILE_TYPES?.split(",") || [
@@ -23,11 +25,14 @@ const fileFilter = (
   ];
   const maxSize = parseInt(process.env.MAX_FILE_SIZE || "10485760", 10); // 10MB default
 
-  console.log("File validation:", {
+  console.log("File validation details:", {
     allowedTypes,
     maxSize,
     actualType: file.mimetype,
     actualSize: file.size,
+    isTypeValid: allowedTypes.includes(file.mimetype),
+    isSizeValid: file.size <= maxSize,
+    fieldname: file.fieldname,
   });
 
   if (!file.mimetype) {
@@ -37,7 +42,11 @@ const fileFilter = (
   }
 
   if (!allowedTypes.includes(file.mimetype)) {
-    console.error("Invalid file type:", file.mimetype);
+    console.error("Invalid file type:", {
+      receivedType: file.mimetype,
+      allowedTypes,
+      fieldname: file.fieldname,
+    });
     cb(
       new Error(`Invalid file type. Allowed types: ${allowedTypes.join(", ")}`)
     );
@@ -45,7 +54,11 @@ const fileFilter = (
   }
 
   if (file.size > maxSize) {
-    console.error("File too large:", file.size, "bytes");
+    console.error("File too large:", {
+      size: file.size,
+      maxSize,
+      fieldname: file.fieldname,
+    });
     cb(new Error(`File too large. Maximum size: ${maxSize / 1024 / 1024}MB`));
     return;
   }
