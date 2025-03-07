@@ -23,50 +23,65 @@ const api = axios.create({
 });
 
 // Add token to requests if it exists
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // Handle FormData requests
+    if (config.data instanceof FormData) {
+      // Remove Content-Type to let browser set it with boundary
+      delete config.headers["Content-Type"];
+      // Remove any CORS headers
+      delete config.headers["Access-Control-Allow-Origin"];
+      delete config.headers["Access-Control-Allow-Headers"];
+      delete config.headers["Access-Control-Allow-Methods"];
+      delete config.headers["Access-Control-Allow-Credentials"];
+
+      config.headers["Accept"] = "application/json";
+    }
+
+    // Log request details for debugging
+    console.log("Request details:", {
+      url: `${config.baseURL}${config.url}`,
+      method: config.method,
+      headers: config.headers,
+      data:
+        config.data instanceof FormData
+          ? `FormData (${Array.from(config.data.entries())
+              .map(([key]) => key)
+              .join(", ")})`
+          : config.data,
+    });
+
+    return config;
+  },
+  (error) => {
+    console.error("Request interceptor error:", error);
+    return Promise.reject(error);
   }
-
-  // Handle FormData requests
-  if (config.data instanceof FormData) {
-    // Remove Content-Type to let browser set it with boundary
-    delete config.headers["Content-Type"];
-    // Remove any CORS headers
-    delete config.headers["Access-Control-Allow-Origin"];
-    delete config.headers["Access-Control-Allow-Headers"];
-    delete config.headers["Access-Control-Allow-Methods"];
-    delete config.headers["Access-Control-Allow-Credentials"];
-
-    config.headers["Accept"] = "application/json";
-  }
-
-  // Log request details for debugging
-  console.log("Request details:", {
-    url: `${config.baseURL}${config.url}`,
-    method: config.method,
-    headers: config.headers,
-    data:
-      config.data instanceof FormData
-        ? `FormData (${Array.from(config.data.entries())
-            .map(([key]) => key)
-            .join(", ")})`
-        : config.data,
-  });
-
-  return config;
-});
+);
 
 // Add response interceptor for better error handling
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log("Response success:", {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+      data: response.data,
+    });
+    return response;
+  },
   (error) => {
     if (error.response) {
       // The request was made and the server responded with a status code
       // that falls out of the range of 2xx
       console.error("Response error:", {
         status: error.response.status,
+        statusText: error.response.statusText,
         data: error.response.data,
         headers: error.response.headers,
         config: {
@@ -74,14 +89,40 @@ api.interceptors.response.use(
           method: error.config.method,
           baseURL: error.config.baseURL,
           headers: error.config.headers,
+          data:
+            error.config.data instanceof FormData
+              ? "FormData"
+              : error.config.data,
         },
       });
     } else if (error.request) {
       // The request was made but no response was received
-      console.error("Request error:", error.request);
+      console.error("Request error:", {
+        request: {
+          method: error.request.method,
+          url: error.request.url,
+          headers: error.request.headers,
+          responseURL: error.request.responseURL,
+          status: error.request.status,
+          statusText: error.request.statusText,
+        },
+        config: {
+          url: error.config.url,
+          method: error.config.method,
+          baseURL: error.config.baseURL,
+          headers: error.config.headers,
+          data:
+            error.config.data instanceof FormData
+              ? "FormData"
+              : error.config.data,
+        },
+      });
     } else {
       // Something happened in setting up the request that triggered an Error
-      console.error("Error:", error.message);
+      console.error("Error:", {
+        message: error.message,
+        config: error.config,
+      });
     }
     return Promise.reject(error);
   }
@@ -167,13 +208,6 @@ export const ocrService = {
           withCredentials: true,
         }
       );
-
-      console.log("OCR Response:", {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers,
-        data: response.data,
-      });
 
       return response.data;
     } catch (error) {

@@ -22,15 +22,9 @@ app.use((req, res, next) => {
 
 // CORS configuration
 const corsOptions = {
-  origin: ["https://ocr-app-frontend.onrender.com", "http://localhost:5173"],
+  origin: true, // Allow all origins temporarily for debugging
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "X-Requested-With",
-    "Accept",
-    "Origin",
-  ],
+  allowedHeaders: "*", // Allow all headers temporarily for debugging
   exposedHeaders: ["Content-Length", "Content-Type"],
   credentials: true,
   maxAge: 86400, // 24 hours
@@ -47,37 +41,34 @@ app.options("*", cors(corsOptions));
 // Add response headers middleware
 app.use((req, res, next) => {
   // Set CORS headers explicitly for each request
-  const origin = req.headers.origin;
-  if (origin && corsOptions.origin.includes(origin)) {
-    res.header("Access-Control-Allow-Origin", origin);
-    res.header("Access-Control-Allow-Credentials", "true");
-    res.header(
-      "Access-Control-Allow-Methods",
-      "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
-    );
-    res.header(
-      "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, Accept, Origin"
-    );
-    res.header("Access-Control-Max-Age", "86400");
-  }
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
+  );
+  res.header("Access-Control-Allow-Headers", "*");
+  res.header("Access-Control-Max-Age", "86400");
 
   // Log request details
   console.log("Request Debug:", {
     timestamp: new Date().toISOString(),
-    origin: origin,
+    origin: req.headers.origin,
     method: req.method,
     path: req.path,
     url: req.url,
     headers: {
       ...req.headers,
       authorization: req.headers.authorization ? "Present" : "Missing",
+      "content-type": req.headers["content-type"],
+      "content-length": req.headers["content-length"],
     },
-    corsEnabled: origin && corsOptions.origin.includes(origin),
+    body: req.method === "POST" ? "Present" : "N/A",
   });
 
   // Handle OPTIONS requests
   if (req.method === "OPTIONS") {
+    console.log("Handling OPTIONS request");
     return res.status(200).end();
   }
 
@@ -147,11 +138,15 @@ app.use((req, res) => {
   console.log("404 Error:", {
     method: req.method,
     path: req.path,
-    headers: req.headers,
     url: req.url,
     baseUrl: req.baseUrl,
     originalUrl: req.originalUrl,
-    body: req.body,
+    headers: {
+      ...req.headers,
+      authorization: req.headers.authorization ? "Present" : "Missing",
+      "content-type": req.headers["content-type"],
+      "content-length": req.headers["content-length"],
+    },
   });
 
   res.status(404).json({
@@ -180,8 +175,12 @@ app.use(
       path: req.path,
       method: req.method,
       timestamp: new Date().toISOString(),
-      headers: req.headers,
-      body: req.body,
+      headers: {
+        ...req.headers,
+        authorization: req.headers.authorization ? "Present" : "Missing",
+        "content-type": req.headers["content-type"],
+        "content-length": req.headers["content-length"],
+      },
     });
 
     // Send error response
