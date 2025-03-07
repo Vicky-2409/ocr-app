@@ -167,6 +167,10 @@ export const ocrService = {
       throw new Error("No file provided");
     }
 
+    if (!(file instanceof File)) {
+      throw new Error("Invalid file object");
+    }
+
     if (file.size > 5 * 1024 * 1024) {
       // 5MB limit
       throw new Error("File size exceeds 5MB limit");
@@ -179,8 +183,8 @@ export const ocrService = {
     }
 
     const formData = new FormData();
+    // Ensure the field name matches the backend's expected field name
     formData.append("image", file);
-    const token = localStorage.getItem("token");
 
     try {
       console.log("Processing image:", {
@@ -188,9 +192,9 @@ export const ocrService = {
           name: file.name,
           type: file.type,
           size: `${(file.size / 1024).toFixed(2)}KB`,
+          fieldName: "image", // Log the field name we're using
         },
-        token: token ? "Present" : "Missing",
-        url: `${API_URL}/api/ocr/process`,
+        token: localStorage.getItem("token") ? "Present" : "Missing",
       });
 
       const response = await api.post<ApiResponse<OcrResult>>(
@@ -199,7 +203,8 @@ export const ocrService = {
         {
           headers: {
             Accept: "application/json",
-            Authorization: `Bearer ${token}`,
+            // Remove Content-Type to let browser set it with boundary
+            "Content-Type": "multipart/form-data",
           },
           onUploadProgress: (progressEvent) => {
             const percentCompleted = Math.round(
@@ -210,9 +215,13 @@ export const ocrService = {
           maxBodyLength: Infinity,
           maxContentLength: Infinity,
           timeout: 300000, // 5 minutes
-          withCredentials: true,
+          withCredentials: true, // Keep this to ensure cookies are sent
         }
       );
+
+      if (!response.data.success) {
+        throw new Error(response.data.message || "Failed to process image");
+      }
 
       return response.data;
     } catch (error) {
@@ -311,9 +320,10 @@ export const ocrService = {
   },
 
   async deleteResult(id: string): Promise<ApiResponse<void>> {
-    const response = await api.delete<ApiResponse<void>>(
-      `/api/ocr/results/${id}`
-    );
+    if (!id || id === "undefined") {
+      throw new Error("Invalid result ID");
+    }
+    const response = await api.delete(`/api/ocr/results/${id}`);
     return response.data;
   },
 };

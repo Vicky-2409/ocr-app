@@ -47,15 +47,26 @@ export const HistoryPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
+    if (!id || id === "undefined") {
+      toast.error("Invalid result ID");
+      return;
+    }
+
     try {
       const response = await ocrService.deleteResult(id);
       if (response.success) {
         setResults((prev) => prev.filter((result) => result.id !== id));
         toast.success("Result deleted successfully");
+      } else {
+        toast.error(response.message || "Failed to delete result");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting result:", error);
-      toast.error("Failed to delete result");
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to delete result";
+      toast.error(errorMessage);
     }
   };
 

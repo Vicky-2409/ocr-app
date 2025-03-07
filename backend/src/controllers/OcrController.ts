@@ -30,6 +30,21 @@ export class OcrController {
     next: NextFunction
   ): Promise<void> {
     try {
+      console.log("Processing image request:", {
+        files: req.files,
+        file: req.file
+          ? {
+              fieldname: req.file.fieldname,
+              originalname: req.file.originalname,
+              mimetype: req.file.mimetype,
+              size: req.file.size,
+              buffer: req.file.buffer ? "Present" : "Missing",
+            }
+          : "No file",
+        body: req.body,
+        headers: req.headers,
+      });
+
       if (!req.file) {
         res.status(HttpStatus.BAD_REQUEST).json({
           success: false,
@@ -38,18 +53,82 @@ export class OcrController {
         return;
       }
 
+      // Validate file object
+      if (!req.file.buffer || !req.file.mimetype) {
+        console.error("Invalid file object:", {
+          buffer: req.file.buffer ? "Present" : "Missing",
+          mimetype: req.file.mimetype,
+          fieldname: req.file.fieldname,
+        });
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "Invalid file format or corrupted file",
+        });
+        return;
+      }
+
+      // Validate file type
+      if (
+        !["image/jpeg", "image/png", "image/jpg"].includes(req.file.mimetype)
+      ) {
+        console.error("Invalid file type:", {
+          receivedType: req.file.mimetype,
+          allowedTypes: ["image/jpeg", "image/png", "image/jpg"],
+          fieldname: req.file.fieldname,
+        });
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "Invalid file type. Only JPEG and PNG images are allowed",
+        });
+        return;
+      }
+
+      // Validate file size (5MB)
+      if (req.file.size > 5 * 1024 * 1024) {
+        console.error("File too large:", {
+          size: req.file.size,
+          maxSize: 5 * 1024 * 1024,
+          fieldname: req.file.fieldname,
+        });
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "File size exceeds 5MB limit",
+        });
+        return;
+      }
+
       const result = await this.ocrService.processImage(req.user.id, req.file);
       res.status(HttpStatus.OK).json({
         success: true,
-        data: result,
+        data: transformOcrResult(result),
       });
     } catch (error) {
-      if (error instanceof Error && error.message.includes("timeout")) {
-        res.status(HttpStatus.GATEWAY_TIMEOUT).json({
-          success: false,
-          message: "OCR processing timed out",
-        });
-        return;
+      console.error("Error in processImage:", {
+        error:
+          error instanceof Error
+            ? {
+                message: error.message,
+                stack: error.stack,
+              }
+            : error,
+      });
+
+      if (error instanceof Error) {
+        if (error.message.includes("timeout")) {
+          res.status(HttpStatus.GATEWAY_TIMEOUT).json({
+            success: false,
+            message: "OCR processing timed out",
+          });
+          return;
+        }
+
+        if (error.message.includes("No file key")) {
+          res.status(HttpStatus.BAD_REQUEST).json({
+            success: false,
+            message: "Invalid file upload. Please try again.",
+          });
+          return;
+        }
       }
       next(error);
     }
@@ -77,6 +156,32 @@ export class OcrController {
     next: NextFunction
   ): Promise<void> {
     try {
+      if (!req.params.id || req.params.id === "undefined") {
+        res.status(HttpStatus.BAD_REQUEST).json({
+          success: false,
+          message: "Invalid result ID",
+        });
+        return;
+      }
+
+      const result = await this.ocrService.getResultById(req.params.id);
+      if (!result) {
+        res.status(HttpStatus.NOT_FOUND).json({
+          success: false,
+          message: Messages.GENERAL.NOT_FOUND,
+        });
+        return;
+      }
+
+      // Check if the result belongs to the user
+      if (result.userId.toString() !== req.user.id) {
+        res.status(HttpStatus.FORBIDDEN).json({
+          success: false,
+          message: Messages.GENERAL.UNAUTHORIZED,
+        });
+        return;
+      }
+
       await this.ocrService.deleteResult(req.params.id);
       res.status(HttpStatus.OK).json({
         success: true,
