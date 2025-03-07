@@ -69,7 +69,13 @@ export const OcrResult: React.FC<OcrResultProps> = ({ result, onDelete }) => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => onDelete(result.id)}
+              onClick={() => {
+                if (!result.id) {
+                  console.error("Invalid result ID:", result);
+                  return;
+                }
+                onDelete(result.id);
+              }}
               className="text-secondary-500 hover:text-error-600 hover:bg-error-50 transition-colors"
             >
               <Trash2 className="h-4 w-4" />

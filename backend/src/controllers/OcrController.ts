@@ -156,6 +156,11 @@ export class OcrController {
     next: NextFunction
   ): Promise<void> {
     try {
+      console.log("Delete request received:", {
+        id: req.params.id,
+        userId: req.user.id,
+      });
+
       if (!req.params.id || req.params.id === "undefined") {
         res.status(HttpStatus.BAD_REQUEST).json({
           success: false,
@@ -175,6 +180,10 @@ export class OcrController {
 
       // Check if the result belongs to the user
       if (result.userId.toString() !== req.user.id) {
+        console.log("Unauthorized delete attempt:", {
+          resultUserId: result.userId.toString(),
+          requestUserId: req.user.id,
+        });
         res.status(HttpStatus.FORBIDDEN).json({
           success: false,
           message: Messages.GENERAL.UNAUTHORIZED,
@@ -188,6 +197,23 @@ export class OcrController {
         message: "Result deleted successfully",
       });
     } catch (error) {
+      console.error("Error in deleteResult:", error);
+      if (error instanceof Error) {
+        if (error.message === "Result not found") {
+          res.status(HttpStatus.NOT_FOUND).json({
+            success: false,
+            message: Messages.GENERAL.NOT_FOUND,
+          });
+          return;
+        }
+        if (error.message === "Invalid result ID") {
+          res.status(HttpStatus.BAD_REQUEST).json({
+            success: false,
+            message: "Invalid result ID",
+          });
+          return;
+        }
+      }
       next(error);
     }
   }

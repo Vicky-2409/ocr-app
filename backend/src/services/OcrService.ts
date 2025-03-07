@@ -232,23 +232,51 @@ export class OcrService {
   }
 
   async deleteResult(id: string): Promise<void> {
+    console.log("Attempting to delete result:", id);
+
+    if (!id || id === "undefined") {
+      throw new Error("Invalid result ID");
+    }
+
     const result = await this.getResultById(id);
-    if (result) {
-      // Delete the image from S3
-      const command = new DeleteObjectCommand({
-        Bucket: S3_BUCKET_NAME,
-        Key: result.originalImage,
-      });
+    if (!result) {
+      throw new Error("Result not found");
+    }
 
+    console.log("Found result to delete:", {
+      id: result._id,
+      originalImage: result.originalImage,
+      userId: result.userId,
+    });
+
+    // Delete the image from S3 if we have a key
+    if (result.originalImage) {
       try {
-        await s3Client.send(command);
-      } catch (error) {
-        if (isDevelopment) {
-          console.error("Error deleting file from S3:", error);
-        }
-      }
+        console.log("Deleting image from S3:", {
+          bucket: S3_BUCKET_NAME,
+          key: result.originalImage,
+        });
 
+        const command = new DeleteObjectCommand({
+          Bucket: S3_BUCKET_NAME,
+          Key: result.originalImage,
+        });
+
+        await s3Client.send(command);
+        console.log("Successfully deleted image from S3");
+      } catch (error) {
+        console.error("Error deleting file from S3:", error);
+        // Don't throw here, continue with deleting the database record
+      }
+    }
+
+    // Delete the database record
+    try {
       await this.ocrResultRepository.delete(id);
+      console.log("Successfully deleted result from database");
+    } catch (error) {
+      console.error("Error deleting result from database:", error);
+      throw new Error("Failed to delete result");
     }
   }
 }
