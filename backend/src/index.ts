@@ -37,7 +37,25 @@ console.log("Environment:", {
 
 // CORS configuration
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN || "https://ocr-app-frontend.onrender.com",
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    const allowedOrigins = [
+      "https://ocr-app-frontend.onrender.com",
+      process.env.CORS_ORIGIN,
+    ].filter(Boolean);
+
+    if (
+      allowedOrigins.indexOf(origin) !== -1 ||
+      process.env.NODE_ENV !== "production"
+    ) {
+      callback(null, true);
+    } else {
+      console.warn(`Origin ${origin} not allowed by CORS`);
+      callback(null, false);
+    }
+  },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: [
     "Content-Type",
@@ -61,21 +79,35 @@ app.use(cors(corsOptions));
 // Add OPTIONS handler for preflight requests
 app.options("*", cors(corsOptions));
 
-// Add CORS debug logging
+// Add CORS debug logging with more details
 app.use((req, res, next) => {
+  const requestOrigin = req.headers.origin;
   console.log("CORS Debug:", {
-    origin: req.headers.origin,
+    origin: requestOrigin,
     method: req.method,
     path: req.path,
+    allowedOrigins: [
+      "https://ocr-app-frontend.onrender.com",
+      process.env.CORS_ORIGIN,
+    ].filter(Boolean),
     headers: {
-      "access-control-request-method":
-        req.headers["access-control-request-method"],
-      "access-control-request-headers":
-        req.headers["access-control-request-headers"],
-      "content-type": req.headers["content-type"],
+      ...req.headers,
       authorization: req.headers.authorization ? "Present" : "Missing",
     },
+    corsEnabled:
+      process.env.NODE_ENV !== "production" ||
+      [
+        "https://ocr-app-frontend.onrender.com",
+        process.env.CORS_ORIGIN,
+      ].includes(requestOrigin || ""),
   });
+  next();
+});
+
+// Add response headers middleware
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header("Access-Control-Allow-Credentials", "true");
   next();
 });
 

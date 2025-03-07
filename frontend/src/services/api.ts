@@ -31,10 +31,11 @@ api.interceptors.request.use((config) => {
 
   // Handle FormData requests
   if (config.data instanceof FormData) {
-    delete config.headers["Content-Type"]; // Let browser set the Content-Type with boundary
+    // Remove Content-Type to let browser set it with boundary
+    delete config.headers["Content-Type"];
+    // Remove problematic headers
+    delete config.headers["Access-Control-Allow-Origin"];
     config.headers["Accept"] = "application/json";
-    config.headers["Access-Control-Allow-Origin"] =
-      import.meta.env.VITE_API_URL;
   }
 
   // Log request details for debugging
@@ -42,12 +43,20 @@ api.interceptors.request.use((config) => {
     url: `${config.baseURL}${config.url}`,
     method: config.method,
     headers: {
-      ...config.headers,
-      Authorization: config.headers.Authorization
-        ? "Bearer [REDACTED]"
-        : undefined,
+      ...Object.keys(config.headers).reduce((acc, key) => {
+        acc[key] =
+          key.toLowerCase() === "authorization"
+            ? "Bearer [REDACTED]"
+            : config.headers[key];
+        return acc;
+      }, {}),
     },
-    data: config.data instanceof FormData ? "FormData" : config.data,
+    data:
+      config.data instanceof FormData
+        ? `FormData (${Array.from(config.data.entries())
+            .map(([key]) => key)
+            .join(", ")})`
+        : config.data,
   });
 
   return config;
@@ -112,18 +121,31 @@ export const authService = {
 
 export const ocrService = {
   async processImage(file: File): Promise<ApiResponse<OcrResult>> {
+    if (!file) {
+      throw new Error("No file provided");
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      // 5MB limit
+      throw new Error("File size exceeds 5MB limit");
+    }
+
+    if (!["image/jpeg", "image/png", "image/jpg"].includes(file.type)) {
+      throw new Error(
+        "Invalid file type. Only JPEG and PNG images are allowed"
+      );
+    }
+
     const formData = new FormData();
     formData.append("image", file);
     const token = localStorage.getItem("token");
 
     try {
-      const fullUrl = `${API_URL}/api/ocr/process`;
       console.log("Processing image:", {
-        url: fullUrl,
         fileDetails: {
           name: file.name,
           type: file.type,
-          size: file.size,
+          size: `${(file.size / 1024).toFixed(2)}KB`,
         },
         token: token ? "Present" : "Missing",
       });
