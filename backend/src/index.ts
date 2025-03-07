@@ -36,10 +36,19 @@ console.log("Environment:", {
 
 // CORS configuration
 const corsOptions = {
-  origin: [
-    "http://localhost:5173", // Local development
-    "https://ocr-app-frontend.onrender.com", // Production frontend
-  ],
+  origin: function(origin: any, callback: any) {
+    const allowedOrigins = [
+      "http://localhost:5173",
+      "https://ocr-app-frontend.onrender.com"
+    ];
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.error("CORS blocked origin:", origin);
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: [
     "Content-Type",
@@ -50,10 +59,28 @@ const corsOptions = {
   ],
   exposedHeaders: ["Content-Length", "Content-Type"],
   credentials: true,
+  maxAge: 86400, // 24 hours
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
 
-// Middleware
+// Enable CORS for all routes
 app.use(cors(corsOptions));
+
+// Add CORS headers manually for additional safety
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin === "https://ocr-app-frontend.onrender.com" || origin === "http://localhost:5173") {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+  next();
+});
 
 // Request logging middleware
 app.use((req, res, next) => {
