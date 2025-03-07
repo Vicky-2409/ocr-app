@@ -38,14 +38,40 @@ console.log("Environment:", {
 // CORS configuration
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "https://ocr-app-frontend.onrender.com",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    origin: true, // Allow all origins temporarily for debugging
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+      "Origin",
+    ],
+    exposedHeaders: ["Content-Length", "Content-Type"],
     credentials: true,
     maxAge: 86400, // 24 hours
     optionsSuccessStatus: 200,
+    preflightContinue: false,
   })
 );
+
+// Add CORS debug logging
+app.use((req, res, next) => {
+  console.log("CORS Debug:", {
+    origin: req.headers.origin,
+    method: req.method,
+    path: req.path,
+    headers: {
+      "access-control-request-method":
+        req.headers["access-control-request-method"],
+      "access-control-request-headers":
+        req.headers["access-control-request-headers"],
+      "content-type": req.headers["content-type"],
+      authorization: req.headers.authorization ? "Present" : "Missing",
+    },
+  });
+  next();
+});
 
 // Request logging middleware
 app.use((req, res, next) => {

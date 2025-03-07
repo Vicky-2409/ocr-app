@@ -27,6 +27,8 @@ services:
         sync: false
       - key: CORS_ORIGIN
         value: https://ocr-app-frontend.onrender.com
+      - key: DEBUG
+        value: "true"
     healthCheckPath: /api/health
     autoDeploy: true
 
@@ -38,6 +40,8 @@ services:
     envVars:
       - key: VITE_API_URL
         value: https://ocr-app-backend-y3i5.onrender.com
+      - key: VITE_DEBUG
+        value: "true"
     autoDeploy: true
     routes:
       - type: rewrite

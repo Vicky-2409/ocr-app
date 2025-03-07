@@ -115,6 +115,10 @@ export const ocrService = {
     });
 
     try {
+      // Log the full URL that will be used
+      const fullUrl = `${API_URL}/api/ocr/process`;
+      console.log("Making request to:", fullUrl);
+
       const response = await api.post<ApiResponse<OcrResult>>(
         "/api/ocr/process",
         formData,
@@ -128,11 +132,25 @@ export const ocrService = {
           },
           maxContentLength: Infinity,
           maxBodyLength: Infinity,
+          headers: {
+            // Ensure correct headers for file upload
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
       return response.data;
     } catch (error) {
       console.error("Error processing image:", error);
+      console.error("Request details:", {
+        url: API_URL + "/api/ocr/process",
+        token: token ? "Present" : "Missing",
+        fileDetails: {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+        },
+      });
 
       // Handle specific error cases
       if (error.code === "ECONNABORTED") {
