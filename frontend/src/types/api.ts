@@ -19,7 +19,8 @@ export interface AuthResponseData {
 export interface AuthResponse extends ApiResponse<AuthResponseData> {}
 
 export interface OcrResult {
-  id: string;
+  id?: string;
+  _id?: string;
   userId: string;
   originalImage: string;
   imageUrl: string;

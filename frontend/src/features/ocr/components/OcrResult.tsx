@@ -70,11 +70,12 @@ export const OcrResult: React.FC<OcrResultProps> = ({ result, onDelete }) => {
               variant="ghost"
               size="icon"
               onClick={() => {
-                if (!result.id) {
+                const resultId = result.id || result._id;
+                if (!resultId) {
                   console.error("Invalid result ID:", result);
                   return;
                 }
-                onDelete(result.id);
+                onDelete(resultId.toString());
               }}
               className="text-secondary-500 hover:text-error-600 hover:bg-error-50 transition-colors"
             >

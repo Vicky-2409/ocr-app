@@ -11,6 +11,7 @@ const transformOcrResult = (result: IOcrResult) => {
   const plainResult = result.toObject ? result.toObject() : result;
   const { _id, userId, ...rest } = plainResult;
   return {
+    _id: typeof _id === "string" ? _id : _id.toString(),
     id: typeof _id === "string" ? _id : _id.toString(),
     userId: typeof userId === "string" ? userId : userId.toString(),
     ...rest,
@@ -143,7 +144,7 @@ export class OcrController {
       const results = await this.ocrService.getUserResults(req.user.id);
       res.status(HttpStatus.OK).json({
         success: true,
-        data: results,
+        data: results.map(transformOcrResult),
       });
     } catch (error) {
       next(error);
