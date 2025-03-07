@@ -47,7 +47,7 @@ export const HistoryPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!id || id === "undefined") {
+    if (!id || typeof id !== "string" || id === "undefined") {
       toast.error("Invalid result ID");
       return;
     }

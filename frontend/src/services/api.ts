@@ -320,7 +320,7 @@ export const ocrService = {
   },
 
   async deleteResult(id: string): Promise<ApiResponse<void>> {
-    if (!id || id === "undefined") {
+    if (!id || typeof id !== "string" || id === "undefined") {
       throw new Error("Invalid result ID");
     }
     const response = await api.delete(`/api/ocr/results/${id}`);

@@ -11,8 +11,8 @@ const transformOcrResult = (result: IOcrResult) => {
   const plainResult = result.toObject ? result.toObject() : result;
   const { _id, userId, ...rest } = plainResult;
   return {
-    id: _id.toString(),
-    userId: userId.toString(),
+    id: typeof _id === "string" ? _id : _id.toString(),
+    userId: typeof userId === "string" ? userId : userId.toString(),
     ...rest,
   };
 };
