@@ -20,8 +20,6 @@ interface S3File extends Omit<Express.Multer.File, "stream"> {
   originalname: string;
 }
 
-const isDevelopment = process.env.NODE_ENV !== "production";
-
 export class OcrService {
   private ocrResultRepository: OcrResultRepository;
   private worker: Worker | null = null;
