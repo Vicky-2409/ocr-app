@@ -6,16 +6,14 @@ import { upload, handleUploadError } from "../middleware/upload";
 const router = Router();
 const ocrController = new OcrController();
 
-// Apply authentication to all routes except file upload
-router.use("/results", authenticate);
-router.use("/results/:id", authenticate);
+// Apply authentication to all routes
+router.use(authenticate);
 
-// File upload route with authentication
+// File upload route
 router.post(
   "/process",
   upload.single("image"),
   handleUploadError,
-  authenticate,
   ocrController.processImage
 );
 
