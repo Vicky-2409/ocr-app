@@ -20,7 +20,35 @@ app.use((req, res, next) => {
   next();
 });
 
-// Increase body size limits
+// CORS configuration
+const corsOptions = {
+  origin: "https://ocr-app-frontend.onrender.com",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "Accept",
+    "Origin",
+    "Access-Control-Allow-Origin",
+    "Access-Control-Allow-Methods",
+    "Access-Control-Allow-Headers",
+    "Access-Control-Allow-Credentials",
+  ],
+  exposedHeaders: ["Content-Length", "Content-Type"],
+  credentials: true,
+  maxAge: 86400, // 24 hours
+  optionsSuccessStatus: 200,
+  preflightContinue: false,
+};
+
+// Apply CORS middleware first
+app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options("*", cors(corsOptions));
+
+// Parse JSON and URL-encoded bodies after CORS
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
@@ -33,69 +61,6 @@ console.log("Environment:", {
   AWS_REGION: process.env.AWS_REGION ? "Present" : "Missing",
   S3_BUCKET_NAME: process.env.S3_BUCKET_NAME ? "Present" : "Missing",
   CORS_ORIGIN: process.env.CORS_ORIGIN,
-});
-
-// CORS configuration
-const corsOptions = {
-  origin: "https://ocr-app-frontend.onrender.com", // Set explicit origin
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "X-Requested-With",
-    "Accept",
-    "Origin",
-  ],
-  exposedHeaders: ["Content-Length", "Content-Type"],
-  credentials: true,
-  maxAge: 86400, // 24 hours
-  optionsSuccessStatus: 200,
-  preflightContinue: false,
-};
-
-// Apply CORS middleware before other middleware
-app.use(cors(corsOptions));
-
-// Handle preflight requests
-app.options("*", (req, res) => {
-  res.header(
-    "Access-Control-Allow-Origin",
-    "https://ocr-app-frontend.onrender.com"
-  );
-  res.header("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, Accept, Origin"
-  );
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.status(200).send();
-});
-
-// Add CORS debug logging with more details
-app.use((req, res, next) => {
-  console.log("Request Debug:", {
-    origin: req.headers.origin,
-    method: req.method,
-    path: req.path,
-    headers: {
-      ...req.headers,
-      authorization: req.headers.authorization ? "Present" : "Missing",
-    },
-  });
-
-  // Add CORS headers to all responses
-  res.header(
-    "Access-Control-Allow-Origin",
-    "https://ocr-app-frontend.onrender.com"
-  );
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.header("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, Accept, Origin"
-  );
-
-  next();
 });
 
 // Request logging middleware
@@ -143,6 +108,12 @@ app.use("/api/ocr", ocrRoutes);
 
 // 404 handler for undefined routes
 app.use((req, res) => {
+  console.log("404 Error:", {
+    method: req.method,
+    path: req.path,
+    headers: req.headers,
+  });
+
   res.status(404).json({
     success: false,
     message: `Route ${req.method} ${req.path} not found`,

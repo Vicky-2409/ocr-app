@@ -33,13 +33,12 @@ api.interceptors.request.use((config) => {
   if (config.data instanceof FormData) {
     // Remove Content-Type to let browser set it with boundary
     delete config.headers["Content-Type"];
-    // Remove any CORS headers as they should be set by the server
+    // Remove any CORS headers
     delete config.headers["Access-Control-Allow-Origin"];
     delete config.headers["Access-Control-Allow-Headers"];
     delete config.headers["Access-Control-Allow-Methods"];
 
     config.headers["Accept"] = "application/json";
-    config.headers["Origin"] = window.location.origin;
   }
 
   // Log request details for debugging
@@ -161,7 +160,6 @@ export const ocrService = {
           headers: {
             Accept: "application/json",
             Authorization: `Bearer ${token}`,
-            Origin: window.location.origin,
           },
           onUploadProgress: (progressEvent) => {
             const percentCompleted = Math.round(
@@ -171,6 +169,13 @@ export const ocrService = {
           },
         }
       );
+
+      console.log("OCR Response:", {
+        status: response.status,
+        headers: response.headers,
+        data: response.data,
+      });
+
       return response.data;
     } catch (error) {
       console.error("Error processing image:", error);
