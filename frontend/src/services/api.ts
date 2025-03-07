@@ -9,7 +9,7 @@ import {
 } from "@/types/api";
 
 // Use the environment variable for API URL
-const API_URL = import.meta.env.VITE_API_URL || "/api";
+const API_URL = import.meta.env.VITE_API_URL;
 
 const api = axios.create({
   baseURL: API_URL,
@@ -35,6 +35,13 @@ api.interceptors.request.use((config) => {
     delete config.headers["Content-Type"];
   }
 
+  console.log("Request config:", {
+    url: config.url,
+    method: config.method,
+    baseURL: config.baseURL,
+    headers: config.headers,
+  });
+
   return config;
 });
 
@@ -49,6 +56,12 @@ api.interceptors.response.use(
         status: error.response.status,
         data: error.response.data,
         headers: error.response.headers,
+        config: {
+          url: error.config.url,
+          method: error.config.method,
+          baseURL: error.config.baseURL,
+          headers: error.config.headers,
+        },
       });
     } else if (error.request) {
       // The request was made but no response was received

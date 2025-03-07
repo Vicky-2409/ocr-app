@@ -32,66 +32,20 @@ console.log("Environment:", {
   JWT_SECRET: process.env.JWT_SECRET ? "Present" : "Missing",
   AWS_REGION: process.env.AWS_REGION ? "Present" : "Missing",
   S3_BUCKET_NAME: process.env.S3_BUCKET_NAME ? "Present" : "Missing",
+  CORS_ORIGIN: process.env.CORS_ORIGIN,
 });
 
 // CORS configuration
-const corsOptions = {
-  origin: function (origin: any, callback: any) {
-    const allowedOrigins = [
-      "http://localhost:5173",
-      "http://localhost:3000",
-      process.env.CORS_ORIGIN,
-    ].filter(Boolean);
-
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.error("CORS blocked origin:", origin);
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "Content-Length",
-    "X-Requested-With",
-    "Accept",
-  ],
-  exposedHeaders: ["Content-Length", "Content-Type"],
-  credentials: true,
-  maxAge: 86400, // 24 hours
-  preflightContinue: false,
-  optionsSuccessStatus: 204,
-};
-
-// Enable CORS for all routes
-app.use(cors(corsOptions));
-
-// Add CORS headers manually for additional safety
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const allowedOrigins = [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    process.env.CORS_ORIGIN,
-  ].filter(Boolean);
-
-  if (origin && allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-  }
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET, POST, PUT, DELETE, OPTIONS"
-  );
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  if (req.method === "OPTIONS") {
-    return res.status(204).end();
-  }
-  next();
-});
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || "https://ocr-app-frontend.onrender.com",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+    maxAge: 86400, // 24 hours
+    optionsSuccessStatus: 200,
+  })
+);
 
 // Request logging middleware
 app.use((req, res, next) => {
