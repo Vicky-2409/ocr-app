@@ -31,15 +31,23 @@ api.interceptors.request.use((config) => {
 
   // Handle FormData requests
   if (config.data instanceof FormData) {
-    // Let the browser set the Content-Type with boundary
-    delete config.headers["Content-Type"];
+    delete config.headers["Content-Type"]; // Let browser set the Content-Type with boundary
+    config.headers["Accept"] = "application/json";
+    config.headers["Access-Control-Allow-Origin"] =
+      import.meta.env.VITE_API_URL;
   }
 
-  console.log("Request config:", {
-    url: config.url,
+  // Log request details for debugging
+  console.log("Request details:", {
+    url: `${config.baseURL}${config.url}`,
     method: config.method,
-    baseURL: config.baseURL,
-    headers: config.headers,
+    headers: {
+      ...config.headers,
+      Authorization: config.headers.Authorization
+        ? "Bearer [REDACTED]"
+        : undefined,
+    },
+    data: config.data instanceof FormData ? "FormData" : config.data,
   });
 
   return config;
@@ -107,35 +115,32 @@ export const ocrService = {
     const formData = new FormData();
     formData.append("image", file);
     const token = localStorage.getItem("token");
-    console.log("Token from localStorage:", token);
-    console.log("File details:", {
-      name: file.name,
-      type: file.type,
-      size: file.size,
-    });
 
     try {
-      // Log the full URL that will be used
       const fullUrl = `${API_URL}/api/ocr/process`;
-      console.log("Making request to:", fullUrl);
+      console.log("Processing image:", {
+        url: fullUrl,
+        fileDetails: {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+        },
+        token: token ? "Present" : "Missing",
+      });
 
       const response = await api.post<ApiResponse<OcrResult>>(
         "/api/ocr/process",
         formData,
         {
-          timeout: 300000, // 5 minutes timeout
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           onUploadProgress: (progressEvent) => {
             const percentCompleted = Math.round(
               (progressEvent.loaded * 100) / progressEvent.total!
             );
             console.log(`Upload progress: ${percentCompleted}%`);
-          },
-          maxContentLength: Infinity,
-          maxBodyLength: Infinity,
-          headers: {
-            // Ensure correct headers for file upload
-            "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${token}`,
           },
         }
       );

@@ -36,24 +36,30 @@ console.log("Environment:", {
 });
 
 // CORS configuration
-app.use(
-  cors({
-    origin: true, // Allow all origins temporarily for debugging
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "X-Requested-With",
-      "Accept",
-      "Origin",
-    ],
-    exposedHeaders: ["Content-Length", "Content-Type"],
-    credentials: true,
-    maxAge: 86400, // 24 hours
-    optionsSuccessStatus: 200,
-    preflightContinue: false,
-  })
-);
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN || "https://ocr-app-frontend.onrender.com",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "Accept",
+    "Origin",
+    "Access-Control-Allow-Origin",
+    "Access-Control-Allow-Headers",
+    "Access-Control-Allow-Methods",
+  ],
+  exposedHeaders: ["Content-Length", "Content-Type"],
+  credentials: true,
+  maxAge: 86400, // 24 hours
+  optionsSuccessStatus: 200,
+  preflightContinue: false,
+};
+
+app.use(cors(corsOptions));
+
+// Add OPTIONS handler for preflight requests
+app.options("*", cors(corsOptions));
 
 // Add CORS debug logging
 app.use((req, res, next) => {
