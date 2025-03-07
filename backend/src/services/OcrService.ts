@@ -1,5 +1,5 @@
-import { createWorker } from "tesseract.js";
-import { IOcrResult, OcrResult } from "../models/OcrResult";
+import { createWorker, Worker } from "tesseract.js";
+import { IOcrResult } from "../models/OcrResult";
 import { OcrResultRepository } from "../repositories/OcrResultRepository";
 import { Messages } from "../constants/messages";
 import { Types } from "mongoose";
@@ -26,7 +26,7 @@ const isDevelopment = process.env.NODE_ENV !== "production";
 
 export class OcrService {
   private ocrResultRepository: OcrResultRepository;
-  private worker: Awaited<ReturnType<typeof createWorker>> | null = null;
+  private worker: Worker | null = null;
 
   constructor() {
     this.ocrResultRepository = new OcrResultRepository();
@@ -36,8 +36,7 @@ export class OcrService {
     try {
       if (!this.worker) {
         this.worker = await createWorker();
-        await this.worker.loadLanguage("eng");
-        await this.worker.initialize("eng");
+        await this.worker.reinitialize("eng");
         console.log("Tesseract worker initialized successfully");
       }
     } catch (err) {
@@ -66,8 +65,6 @@ export class OcrService {
     let extractedText = "";
     let status: "success" | "failed" = "success";
     let error: string | undefined;
-    let retryCount = 0;
-    const maxRetries = 3;
 
     try {
       console.log("Starting OCR processing for user:", userId);
@@ -171,15 +168,6 @@ export class OcrService {
         },
       });
 
-      // Ensure worker is terminated even if there's an error
-      if (this.worker) {
-        try {
-          await this.terminateWorker();
-        } catch (terminateError) {
-          console.error("Error terminating worker:", terminateError);
-        }
-      }
-
       // Create a failed result entry
       try {
         const result = await this.ocrResultRepository.create({
@@ -195,6 +183,8 @@ export class OcrService {
       } catch (saveError) {
         console.error("Error saving failed OCR result:", saveError);
         throw new Error("Failed to save OCR result");
+      } finally {
+        await this.terminateWorker();
       }
     }
   }

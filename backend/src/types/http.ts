@@ -1,6 +1,4 @@
 import { Request } from "express";
-import { Express } from "express";
-import { ParamsDictionary } from "express-serve-static-core";
 
 export interface AuthRequest extends Request {
   user?: {
@@ -18,7 +16,6 @@ export enum HttpStatus {
   UNAUTHORIZED = 401,
   FORBIDDEN = 403,
   NOT_FOUND = 404,
-  REQUEST_TIMEOUT = 408,
   INTERNAL_SERVER_ERROR = 500,
 }
 
