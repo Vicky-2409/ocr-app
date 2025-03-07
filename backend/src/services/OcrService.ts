@@ -17,6 +17,7 @@ interface S3File extends Express.Multer.File {
   fieldname: string;
   originalname: string;
   buffer: Buffer;
+  stream?: NodeJS.ReadableStream;
 }
 
 const isDevelopment = process.env.NODE_ENV !== "production";
@@ -46,6 +47,7 @@ export class OcrService {
         key: imageFile.key,
         fieldname: imageFile.fieldname,
         encoding: imageFile.encoding,
+        stream: imageFile.stream ? "Present" : "Missing",
       });
 
       // Verify AWS configuration
@@ -58,11 +60,6 @@ export class OcrService {
         throw new Error("No file key found in uploaded file");
       }
 
-      if (!imageFile.buffer || imageFile.buffer.length === 0) {
-        console.error("No file buffer found in uploaded file");
-        throw new Error("No file buffer found in uploaded file");
-      }
-
       // Create worker with increased timeout for free tier
       console.log("Creating OCR worker...");
       retryCount = 0;
@@ -70,25 +67,7 @@ export class OcrService {
       while (retryCount < maxRetries) {
         try {
           console.log(`Attempt ${retryCount + 1} to create worker`);
-          const workerPromise = createWorker();
-
-          worker = await Promise.race([
-            workerPromise,
-            new Promise((_, reject) =>
-              setTimeout(
-                () => reject(new Error("Worker creation timeout")),
-                120000 // Increased to 2 minutes for free tier
-              )
-            ),
-          ]);
-
-          // Add logger after worker creation
-          if (worker) {
-            worker.setLogger((progress) => {
-              console.log("Worker progress:", progress);
-            });
-          }
-
+          worker = await createWorker();
           console.log("Worker created successfully");
           break;
         } catch (err) {
@@ -99,8 +78,8 @@ export class OcrService {
               `Failed to create worker after ${maxRetries} attempts: ${err.message}`
             );
           }
-          await new Promise(
-            (resolve) => setTimeout(resolve, 2000 * retryCount) // Increased delay between retries
+          await new Promise((resolve) =>
+            setTimeout(resolve, 2000 * retryCount)
           );
         }
       }
@@ -111,15 +90,7 @@ export class OcrService {
       while (retryCount < maxRetries) {
         try {
           console.log(`Attempt ${retryCount + 1} to load language`);
-          await Promise.race([
-            worker.loadLanguage("eng"),
-            new Promise((_, reject) =>
-              setTimeout(
-                () => reject(new Error("Language loading timeout")),
-                60000
-              )
-            ),
-          ]);
+          await worker.loadLanguage("eng");
           console.log("Language loaded successfully");
           break;
         } catch (err) {
@@ -138,15 +109,7 @@ export class OcrService {
       while (retryCount < maxRetries) {
         try {
           console.log(`Attempt ${retryCount + 1} to initialize worker`);
-          await Promise.race([
-            worker.initialize("eng"),
-            new Promise((_, reject) =>
-              setTimeout(
-                () => reject(new Error("Worker initialization timeout")),
-                60000
-              )
-            ),
-          ]);
+          await worker.initialize("eng");
           console.log("Worker initialized successfully");
           break;
         } catch (err) {
@@ -162,69 +125,48 @@ export class OcrService {
         }
       }
 
-      // Get the image from S3 with timeout and retry
-      console.log("Generating S3 URL...");
-      retryCount = 0;
-      let url: string | undefined;
-      while (retryCount < maxRetries) {
-        try {
-          console.log(`Attempt ${retryCount + 1} to generate S3 URL`);
-          const command = new GetObjectCommand({
-            Bucket: S3_BUCKET_NAME,
-            Key: imageFile.key,
-          });
-          const signedUrl = await Promise.race([
-            getSignedUrl(s3Client, command, { expiresIn: 3600 }),
-            new Promise((_, reject) =>
-              setTimeout(
-                () => reject(new Error("S3 URL generation timeout")),
-                60000
-              )
-            ),
-          ]);
-          if (typeof signedUrl === "string") {
-            url = signedUrl;
-            console.log("S3 URL generated successfully");
-          } else {
-            console.error("Invalid signed URL type:", typeof signedUrl);
-          }
-          break;
-        } catch (err) {
-          retryCount++;
-          console.error(`S3 URL generation attempt ${retryCount} failed:`, err);
-          if (retryCount === maxRetries) throw err;
-          await new Promise((resolve) =>
-            setTimeout(resolve, 1000 * retryCount)
-          );
-        }
-      }
+      // Get the image from S3
+      console.log("Getting image from S3...");
+      const command = new GetObjectCommand({
+        Bucket: S3_BUCKET_NAME,
+        Key: imageFile.key,
+      });
 
-      if (!url) {
-        console.error("Failed to generate S3 URL after all attempts");
-        throw new Error("Failed to generate S3 URL");
-      }
-
-      // Recognize text with progress tracking and timeout
-      console.log("Starting OCR processing...");
       try {
-        const result = await Promise.race([
-          worker.recognize(url, {
+        const { Body } = await s3Client.send(command);
+        if (!Body) {
+          throw new Error("No image data received from S3");
+        }
+
+        // Convert stream to buffer
+        const chunks: Uint8Array[] = [];
+        for await (const chunk of Body as any) {
+          chunks.push(chunk);
+        }
+        const buffer = Buffer.concat(chunks);
+
+        // Recognize text with progress tracking and timeout
+        console.log("Starting OCR processing...");
+        try {
+          const result = await worker.recognize(buffer, {
             logger: (m) => {
               console.log(`OCR Progress: ${m.status} - ${m.progress * 100}%`);
             },
-          }),
-          new Promise((_, reject) =>
-            setTimeout(
-              () => reject(new Error("OCR processing timeout")),
-              300000
-            )
-          ),
-        ]);
-        extractedText = result.data.text;
-        console.log("OCR processing completed successfully");
-        console.log("Extracted text length:", extractedText.length);
+          });
+
+          if (!result?.data?.text) {
+            throw new Error("No text extracted from image");
+          }
+
+          extractedText = result.data.text;
+          console.log("OCR processing completed successfully");
+          console.log("Extracted text length:", extractedText.length);
+        } catch (err) {
+          console.error("Error during OCR recognition:", err);
+          throw err;
+        }
       } catch (err) {
-        console.error("Error during OCR recognition:", err);
+        console.error("Error getting image from S3:", err);
         throw err;
       }
 
@@ -232,6 +174,23 @@ export class OcrService {
       console.log("Terminating worker...");
       await worker.terminate();
       console.log("Worker terminated successfully");
+
+      const processingTime = Date.now() - startTime;
+      console.log(`Total processing time: ${processingTime}ms`);
+
+      // Save the result
+      console.log("Saving OCR result...");
+      const result = await this.ocrResultRepository.create({
+        userId: new Types.ObjectId(userId),
+        originalImage: imageFile.key,
+        imageUrl: `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${imageFile.key}`,
+        extractedText,
+        status,
+        processingTime,
+      } as IOcrResult);
+
+      console.log("OCR result saved successfully");
+      return result;
     } catch (err: unknown) {
       status = "failed";
       error = err instanceof Error ? err.message : String(err);
@@ -256,68 +215,23 @@ export class OcrService {
           console.error("Error terminating worker:", terminateError);
         }
       }
-    }
 
-    const processingTime = Date.now() - startTime;
-    console.log(`Total processing time: ${processingTime}ms`);
-
-    // Get the S3 URL for the image with timeout and retry
-    try {
-      console.log("Generating final S3 URL...");
-      retryCount = 0;
-      let imageUrl: string | undefined;
-      while (retryCount < maxRetries) {
-        try {
-          const command = new GetObjectCommand({
-            Bucket: S3_BUCKET_NAME,
-            Key: imageFile.key || imageFile.originalname,
-          });
-          const signedUrl = await Promise.race([
-            getSignedUrl(s3Client, command, { expiresIn: 3600 }),
-            new Promise((_, reject) =>
-              setTimeout(
-                () => reject(new Error("Final S3 URL generation timeout")),
-                60000
-              )
-            ),
-          ]);
-          if (typeof signedUrl === "string") {
-            imageUrl = signedUrl;
-          }
-          console.log("Final S3 URL generated successfully");
-          break;
-        } catch (err) {
-          retryCount++;
-          console.error(
-            `Final S3 URL generation attempt ${retryCount} failed:`,
-            err
-          );
-          if (retryCount === maxRetries) throw err;
-          await new Promise((resolve) =>
-            setTimeout(resolve, 1000 * retryCount)
-          );
-        }
+      // Create a failed result entry
+      try {
+        const result = await this.ocrResultRepository.create({
+          userId: new Types.ObjectId(userId),
+          originalImage: imageFile.key || imageFile.originalname,
+          imageUrl: `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${imageFile.key}`,
+          extractedText: "Error processing image",
+          status,
+          error,
+          processingTime: Date.now() - startTime,
+        } as IOcrResult);
+        return result;
+      } catch (saveError) {
+        console.error("Error saving failed OCR result:", saveError);
+        throw new Error("Failed to save OCR result");
       }
-
-      if (!imageUrl) {
-        throw new Error("Failed to generate final S3 URL");
-      }
-
-      console.log("Saving OCR result...");
-      const result = await this.ocrResultRepository.create({
-        userId: new Types.ObjectId(userId),
-        originalImage: imageFile.key || imageFile.originalname,
-        imageUrl,
-        extractedText,
-        status,
-        error: error || undefined,
-        processingTime,
-      } as IOcrResult);
-      console.log("OCR result saved successfully");
-      return result;
-    } catch (err) {
-      console.error("Error saving OCR result:", err);
-      throw new Error("Failed to save OCR result");
     }
   }
 
