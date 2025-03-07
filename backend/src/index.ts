@@ -22,12 +22,18 @@ app.use((req, res, next) => {
 
 // CORS configuration
 const corsOptions = {
-  origin: true, // Allow all origins temporarily for debugging
+  origin: process.env.CORS_ORIGIN || "http://localhost:3000",
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: "*", // Allow all headers temporarily for debugging
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "Accept",
+    "Origin",
+  ],
   exposedHeaders: ["Content-Length", "Content-Type"],
   credentials: true,
-  maxAge: 86400, // 24 hours
+  maxAge: 86400,
   optionsSuccessStatus: 200,
   preflightContinue: false,
 };
@@ -41,13 +47,19 @@ app.options("*", cors(corsOptions));
 // Add response headers middleware
 app.use((req, res, next) => {
   // Set CORS headers explicitly for each request
-  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header(
+    "Access-Control-Allow-Origin",
+    process.env.CORS_ORIGIN || "http://localhost:3000"
+  );
   res.header("Access-Control-Allow-Credentials", "true");
   res.header(
     "Access-Control-Allow-Methods",
     "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
   );
-  res.header("Access-Control-Allow-Headers", "*");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+  );
   res.header("Access-Control-Max-Age", "86400");
 
   // Log request details

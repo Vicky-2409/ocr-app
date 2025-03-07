@@ -6,9 +6,9 @@ import { Types } from "mongoose";
 import { DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client, S3_BUCKET_NAME } from "../config/aws";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { Readable } from 'stream';
+import { Readable } from "stream";
 
-interface S3File extends Omit<Express.Multer.File, 'stream'> {
+interface S3File extends Omit<Express.Multer.File, "stream"> {
   key?: string;
   location?: string;
   bucket?: string;
@@ -149,11 +149,8 @@ export class OcrService {
         // Recognize text with progress tracking and timeout
         console.log("Starting OCR processing...");
         try {
-          const result = await worker.recognize(buffer, {
-            logger: (m) => {
-              console.log(`OCR Progress: ${m.status} - ${m.progress * 100}%`);
-            },
-          });
+          const result = await worker.recognize(buffer);
+          console.log("OCR processing completed");
 
           if (!result?.data?.text) {
             throw new Error("No text extracted from image");

@@ -8,8 +8,13 @@ import {
   User,
 } from "@/types/api";
 
-// Use the environment variable for API URL
-const API_URL = import.meta.env.VITE_API_URL;
+// Default API URL for development
+const DEFAULT_API_URL = "http://localhost:5000";
+
+// Use environment variable or fallback to default
+const API_URL = import.meta.env.VITE_API_URL || DEFAULT_API_URL;
+
+console.log("API URL:", API_URL); // Debug log
 
 const api = axios.create({
   baseURL: API_URL,

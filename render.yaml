@@ -8,7 +8,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 10000
+        value: 5000
       - key: MONGODB_URI
         sync: false
       - key: JWT_SECRET
@@ -32,14 +32,14 @@ services:
     healthCheckPath: /api/health
     autoDeploy: true
 
-  - type: static
+  - type: web
     name: ocr-app-frontend
     env: static
     buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: frontend/dist
+    staticPublishPath: ./frontend/dist
     envVars:
       - key: VITE_API_URL
-        value: https://ocr-app-backend-y3i5.onrender.com
+        value: https://ocr-app-backend.onrender.com
       - key: VITE_DEBUG
         value: "true"
     autoDeploy: true
